@@ -76,19 +76,23 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Definir rutas
 app.use('/api/admin/auth', require('./routes/admin'));
-app.use('/api/advisors/auth', require('./routes/advisors'));
 app.use('/api/users/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/auth'));
+app.use('/api/events', require('./routes/events'));
 app.use('/api/invitation', require('./routes/invitations'));
 app.use('/api/newsletter', require('./routes/newsletter'));
 app.use('/api/uploads', require('./routes/images'));
 app.use('/api/images', require('./routes/images'));
-app.use('/api/images/server/external', require('./routes/imagesServer'));
-app.use('/api/properties', require('./routes/properties'));
-app.use('/api/properties/issues', require('./routes/IssueReports'));
+app.use('/api/products', require('./routes/products'));
+app.use('/api/cart', require('./routes/cart'));
+app.use('/api/wishlist', require('./routes/wishlist'));
+app.use('/api/ratings', require('./routes/ratings'));
+app.use('/api/products/issues', require('./routes/IssueReports'));
 app.use('/api/pqrs', require('./routes/pqrs'));
 app.use('/api/likes', require('./routes/likes'));
 app.use('/api/codes/registration/admin', require('./routes/regCodeAdmin'));
 app.use('/api/accounts/recovery', require('./routes/recovery'));
+app.use("/api/comments", require("./routes/comments"));
 app.use(express.static('uploads'));
 
 // Configuración de socket.io

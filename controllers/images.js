@@ -82,8 +82,8 @@ const uploadImages = async (req, res) => {
   }
 };
 
-const getImagesByPropertyId = (req, res) => {
-  const { property_id } = req.params;
+const getImagesByProductId = async (req, res) => {
+  const { product_id } = req.params;
 
   const connection = mysqls.createConnection({
     connectionLimit: 10,
@@ -94,11 +94,11 @@ const getImagesByPropertyId = (req, res) => {
   });
   
 
-  const sql = 'SELECT * FROM properties_img WHERE property_id = ?';
-  connection.query(sql, [property_id], (err, results) => {
+  const sql = 'SELECT * FROM products_img WHERE product_id = ?';
+  connection.query(sql, [product_id], (err, results) => {
     if (err) {
-      console.error('Error al obtener las imágenes del inmueble:', err);
-      return res.status(500).json({ error: 'Error al obtener las imágenes del inmueble' });
+      console.error('Error al obtener las imágenes del producto:', err);
+      return res.status(500).json({ error: 'Error al obtener las imágenes del producto' });
     }
 
     res.json({ images: results });
@@ -107,7 +107,7 @@ const getImagesByPropertyId = (req, res) => {
 
 module.exports = {
     uploadImages,
-    getImagesByPropertyId,
+    getImagesByProductId,
     uploadImage,
     upload,
 };
