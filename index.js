@@ -21,14 +21,14 @@ let corsOptions;
 if (process.env.NODE_ENV === 'production') {
   corsOptions = {
     origin: [
-      'https://gavicinmobiliaria.com',
-      'https://www.gavicinmobiliaria.com',
-      'https://admin.gavicinmobiliaria.com',
-      'https://www.admin.gavicinmobiliaria.com',
-      'https://gavicinmobiliaria-api.vercel.app',
-      'https://www.gavicinmobiliaria-api.vercel.app',
-      'https://gavicinmobiliaria-api.vercel.app/api',
-      'https://www.gavicinmobiliaria-api.vercel.app/api',
+      'https://ultrasystem.shop',
+      'https://www.ultrasystem.shop',
+      'https://admin.ultrasystem.shop',
+      'https://www.admin.ultrasystem.shop',
+      'https://ultrasystem-api.vercel.app',
+      'https://www.ultrasystem-api.vercel.app',
+      'https://ultrasystem-api.vercel.app/api',
+      'https://www.ultrasystem-api.vercel.app/api',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
