@@ -11,7 +11,7 @@ const createComment = async (req, res) => {
 
   try {
     const [result] = await pool.execute(
-      `INSERT INTO comments (user_id, product_id, coment)
+      `INSERT INTO comments (user_id, product_id, comment)
        VALUES (?, ?, ?)`,
       [user_id, product_id, comment]
     );
@@ -21,7 +21,6 @@ const createComment = async (req, res) => {
       user_id,
       product_id,
       comment,
-      message: "Comentario publicado correctamente",
     });
   } catch (error) {
     console.error("Error creando comentario:", error);
@@ -31,4 +30,9 @@ const createComment = async (req, res) => {
   }
 };
 
-module.exports = { createComment };
+const getComents = async (req, res) => {
+  const [comments] = await pool.execute("SELECT * FROM comments");
+  res.json(comments);
+};
+
+module.exports = { createComment, getComents };
