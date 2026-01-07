@@ -7,7 +7,7 @@ const router = Router();
 
 // router.post('/images/single', uploadImage);
 
-router.post('/images/multiple', upload.array('img_url'), (req, res) => {
+router.post('/multiple', upload.array('img_url'), (req, res) => {
   uploadImages(req, res);
 });
 

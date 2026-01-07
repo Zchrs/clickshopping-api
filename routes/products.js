@@ -87,9 +87,9 @@ router.get('/category', async (req, res) => {
   }
 });
 
-router.get('/products/images/:product_id', getImagesByProductId);
+router.get('/images/:product_id', getImagesByProductId);
 
-router.put('/update/:id', upload.array('img_url', 5), updateProduct);
+router.put('/update/:id', upload.array('img_url', 6), updateProduct);
 
 router.post('/:id/sell-product', async (req, res) => {
   const { productId, quantity } = req.body;
