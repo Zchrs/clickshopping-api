@@ -2,6 +2,9 @@
 // const mysql = require('mysql');
 const util = require('util');
 const { pool } = require("../database/config");
+const fs = require("fs");
+const path = require("path");
+const imagekit = require("imagekit");
 const { v4: uuidv4 } = require('uuid');
 
 const v4options = {
@@ -165,9 +168,40 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
   const { id } = req.params;
   const connection = await pool.getConnection();
+  const isProduction = process.env.NODE_ENV === "production";
+
+  const UPLOADS_DIR = path.resolve(process.cwd(), "uploads");
 
   try {
     await connection.beginTransaction();
+
+    const [images] = await connection.execute(
+      "SELECT id, img_url FROM products_img WHERE product_id = ?",
+      [id]
+    );
+
+    for (const img of images) {
+
+      // 🟢 DESARROLLO
+      if (!isProduction && img.img_url) {
+        const relativePath = img.img_url.replace(/^https?:\/\/[^/]+/, "");
+        const localPath = path.join(
+          UPLOADS_DIR,
+          relativePath.replace("/uploads", "")
+        );
+
+        console.log("🧨 Deleting local:", localPath);
+
+        if (fs.existsSync(localPath)) {
+          fs.unlinkSync(localPath);
+        }
+      }
+
+      // 🔵 PRODUCCIÓN
+      if (isProduction && img.file_id) {
+        await imagekit.deleteFile(img.file_id);
+      }
+    }
 
     await connection.execute(
       "DELETE FROM products_img WHERE product_id = ?",
@@ -180,7 +214,9 @@ const deleteProduct = async (req, res) => {
     );
 
     await connection.commit();
-    res.json({ message: "Producto eliminado correctamente" });
+
+    res.json({ ok: true });
+
   } catch (error) {
     await connection.rollback();
     console.error(error);
@@ -189,6 +225,7 @@ const deleteProduct = async (req, res) => {
     connection.release();
   }
 };
+
 
 // async function sellProduct(productId, quantity) {
 //   const connection = await mysql.createConnection({host: 'localhost', user: 'root', database: 'shop'});
