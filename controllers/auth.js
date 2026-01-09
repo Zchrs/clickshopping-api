@@ -25,23 +25,19 @@ const createUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
     // Verifica email y teléfono...
-    
     // Inserta el usuario con AMBOS identificadores
     const [result] = await connection.execute(
       `INSERT INTO users (
-        id, country, name, lastname, state, city, phone,
-        email, address, role, password, verificationToken
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, country, name, lastname, phone,
+        email, role, password, verificationToken
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         req.body.country,
         req.body.name,
         req.body.lastname,
-        req.body.state,
-        req.body.city,
         req.body.phone,
         req.body.email,
-        req.body.address,
         req.body.role,
         hashedPassword,
         verificationToken
@@ -63,16 +59,16 @@ const createUser = async (req, res) => {
 
       // Configura el correo con el verificationToken
       const mailBody = {
-        from: '"Gavic Inmobiliaria" <noreply@gavicinmobiliaria.com>',
+        from: '"Ultrasystem" <noreply@ultrasystem.shop>',
         to: req.body.email,
         subject: 'Verifica tu correo electrónico',
         html: `
           <p>Por favor verifica tu correo:</p>
-          <a href="http://192.168.200.181:5173/#/clients/account/verify/${userId}/${verificationToken}">
+          <a href="${process.env.VITE_APP_FRONT_URL}/#/clients/account/verify/${userId}/${verificationToken}">
             Haz clic aquí
           </a>
           <p>O copia esta URL en tu navegador:</p>
-          <p>http://192.168.200.181:5173/#/clients/account/verify/${userId}/${verificationToken}</p>
+          <p>${process.env.VITE_APP_FRONT_URL}/#/clients/account/verify/${userId}/${verificationToken}</p>
         `,
       };
 
