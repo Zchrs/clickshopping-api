@@ -11,7 +11,7 @@ router.post('/multiple', upload.array('img_url'), (req, res) => {
   uploadImages(req, res);
 });
 
-router.post('/images/single', upload.single('image'), uploadImage);
+router.post('/single', upload.single('image'), uploadImage);
 
 router.get("/auth", (req, res) => {
   console.log("ImageKit auth requested");
