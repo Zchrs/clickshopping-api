@@ -2,7 +2,7 @@
 // const mysql = require('mysql');
 const util = require('util');
 const { pool } = require("../database/config");
-const {cloudinary} = require("../database/cloudinary.js");
+const cloudinary = require("../database/cloudinary");
 const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require('uuid');
