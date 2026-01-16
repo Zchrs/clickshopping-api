@@ -122,7 +122,7 @@ const createProduct = async (req, res) => {
     if (img_url.length > 0) {
       const images = img_url.map(img => [
         id,
-        img.public_id || null,
+        img.public_id,
         img.url,
       ]);
 
@@ -134,16 +134,7 @@ const createProduct = async (req, res) => {
 
     await connection.commit();
 
-    res.json({
-      id,
-      name,
-      price,
-      previousPrice,
-      category,
-      quantity,
-      description,
-      img_url,
-    });
+    res.json({ ok: true, id });
   } catch (error) {
     await connection.rollback();
     console.error("CREATE PRODUCT ERROR:", error);
@@ -152,6 +143,7 @@ const createProduct = async (req, res) => {
     connection.release();
   }
 };
+
 
 
 
