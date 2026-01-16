@@ -2,9 +2,9 @@
 // const mysql = require('mysql');
 const util = require('util');
 const { pool } = require("../database/config");
+const {cloudinary} = require("../database/cloudinary.js");
 const fs = require("fs");
 const path = require("path");
-const imagekit = require("imagekit");
 const { v4: uuidv4 } = require('uuid');
 
 const v4options = {
@@ -13,6 +13,73 @@ const v4options = {
     0x30, 0x51
   ],
 };
+
+// const createProduct = async (req, res) => {
+//   const {
+//     id = uuidv4(),
+//     name,
+//     price,
+//     previousPrice,
+//     category,
+//     quantity,
+//     description,
+//     img_url = [],
+//   } = req.body;
+
+//   if (!Array.isArray(img_url)) {
+//     return res.status(400).json({ error: "img_url debe ser un array" });
+//   }
+
+//   const connection = await pool.getConnection();
+
+//   try {
+//     await connection.beginTransaction();
+
+//     const [exists] = await connection.execute(
+//       "SELECT COUNT(*) AS count FROM products WHERE name = ?",
+//       [name]
+//     );
+
+//     if (exists[0].count > 0) {
+//       await connection.rollback();
+//       return res.status(400).json({ error: "El producto ya está registrado" });
+//     }
+
+//     await connection.execute(
+//       `INSERT INTO products 
+//        (id, name, price, previousPrice, category, quantity, description)
+//        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+//       [id, name, price, previousPrice, category, quantity, description]
+//     );
+
+//     if (img_url.length > 0) {
+//       const images = img_url.map(url => [id, url]);
+//       await connection.query(
+//         "INSERT INTO products_img (product_id, img_url) VALUES ?",
+//         [images]
+//       );
+//     }
+
+//     await connection.commit();
+
+//     res.json({
+//       id,
+//       name,
+//       price,
+//       previousPrice,
+//       category,
+//       quantity,
+//       description,
+//       img_url,
+//     });
+//   } catch (error) {
+//     await connection.rollback();
+//     console.error(error);
+//     res.status(500).json({ error: "Error al crear el producto" });
+//   } finally {
+//     connection.release();
+//   }
+// };
 
 const createProduct = async (req, res) => {
   const {
@@ -23,7 +90,7 @@ const createProduct = async (req, res) => {
     category,
     quantity,
     description,
-    img_url = [],
+    img_url = [], // [{ url, public_id }]
   } = req.body;
 
   if (!Array.isArray(img_url)) {
@@ -53,9 +120,14 @@ const createProduct = async (req, res) => {
     );
 
     if (img_url.length > 0) {
-      const images = img_url.map(url => [id, url]);
+      const images = img_url.map(img => [
+        id,
+        img.public_id || null,
+        img.url,
+      ]);
+
       await connection.query(
-        "INSERT INTO products_img (product_id, img_url) VALUES ?",
+        "INSERT INTO products_img (product_id, file_id, img_url,) VALUES ?",
         [images]
       );
     }
@@ -80,6 +152,7 @@ const createProduct = async (req, res) => {
     connection.release();
   }
 };
+
 
 const getProducts = async () => {
   const [products] = await pool.execute("SELECT * FROM products");
@@ -176,13 +249,13 @@ const deleteProduct = async (req, res) => {
     await connection.beginTransaction();
 
     const [images] = await connection.execute(
-      "SELECT id, img_url FROM products_img WHERE product_id = ?",
+      "SELECT id, img_url, cloudinary_public_id FROM products_img WHERE product_id = ?",
       [id]
     );
 
     for (const img of images) {
 
-      // 🟢 DESARROLLO
+      /* 🟢 DESARROLLO → borrar archivo local */
       if (!isProduction && img.img_url) {
         const relativePath = img.img_url.replace(/^https?:\/\/[^/]+/, "");
         const localPath = path.join(
@@ -197,12 +270,14 @@ const deleteProduct = async (req, res) => {
         }
       }
 
-      // 🔵 PRODUCCIÓN
-      if (isProduction && img.file_id) {
-        await imagekit.deleteFile(img.file_id);
+      /* 🔵 PRODUCCIÓN → borrar en Cloudinary */
+      if (isProduction && img.cloudinary_public_id) {
+        console.log("☁️ Deleting Cloudinary:", img.cloudinary_public_id);
+        await cloudinary.uploader.destroy(img.cloudinary_public_id);
       }
     }
 
+    /* 🗑️ DB */
     await connection.execute(
       "DELETE FROM products_img WHERE product_id = ?",
       [id]
@@ -214,12 +289,11 @@ const deleteProduct = async (req, res) => {
     );
 
     await connection.commit();
-
     res.json({ ok: true });
 
   } catch (error) {
     await connection.rollback();
-    console.error(error);
+    console.error("❌ Delete product error:", error);
     res.status(500).json({ error: "Error al eliminar producto" });
   } finally {
     connection.release();
