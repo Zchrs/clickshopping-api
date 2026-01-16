@@ -127,7 +127,7 @@ const createProduct = async (req, res) => {
       ]);
 
       await connection.query(
-        "INSERT INTO products_img (product_id, file_id, img_url,) VALUES ?",
+        "INSERT INTO products_img (product_id, file_id, img_url) VALUES ?",
         [images]
       );
     }
@@ -146,12 +146,13 @@ const createProduct = async (req, res) => {
     });
   } catch (error) {
     await connection.rollback();
-    console.error(error);
+    console.error("CREATE PRODUCT ERROR:", error);
     res.status(500).json({ error: "Error al crear el producto" });
   } finally {
     connection.release();
   }
 };
+
 
 
 const getProducts = async () => {
