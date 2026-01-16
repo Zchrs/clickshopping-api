@@ -229,53 +229,64 @@ const updateProduct = async (req, res) => {
 };
 
 
-const deleteProduct = async (req, res) => {
+export const deleteProduct = async (req, res) => {
   const { id } = req.params;
   const connection = await pool.getConnection();
 
   try {
+    console.log("DELETE PRODUCT ID:", id);
+
     await connection.beginTransaction();
 
-    // 1️⃣ Buscar imágenes asociadas
-    const [images] = await connection.execute(
-      "SELECT id, file_id FROM products_img WHERE product_id = ?",
+    // 🔍 Verificar que el producto existe
+    const [product] = await connection.execute(
+      "SELECT id FROM products WHERE id = ?",
       [id]
     );
 
-    // 2️⃣ Si hay imágenes → borrar en Cloudinary
-    if (images.length > 0) {
-      const publicIds = images
-        .map(img => img.file_id)
-        .filter(Boolean); // elimina nulls
-
-      if (publicIds.length > 0) {
-        await cloudinary.api.delete_resources(publicIds);
-      }
-
-      // borrar relaciones de imágenes en BD
-      await connection.execute(
-        "DELETE FROM products_img WHERE product_id = ?",
-        [id]
-      );
+    if (product.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Producto no existe" });
     }
 
-    // 3️⃣ Siempre borrar producto
+    // 🖼️ Obtener imágenes
+    const [images] = await connection.execute(
+      "SELECT file_id FROM products_img WHERE product_id = ?",
+      [id]
+    );
+
+    console.log("IMAGES FOUND:", images);
+
+    // ☁️ Borrar Cloudinary si existen
+    const publicIds = images.map(img => img.file_id).filter(Boolean);
+
+    if (publicIds.length > 0) {
+      const cloudRes = await cloudinary.api.delete_resources(publicIds);
+      console.log("CLOUDINARY DELETE:", cloudRes);
+    }
+
+    // 🧹 Borrar relaciones primero
+    await connection.execute(
+      "DELETE FROM products_img WHERE product_id = ?",
+      [id]
+    );
+
+    // ❌ Borrar producto
     const [result] = await connection.execute(
       "DELETE FROM products WHERE id = ?",
       [id]
     );
 
+    console.log("PRODUCT DELETE RESULT:", result);
+
     await connection.commit();
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Producto no encontrado" });
-    }
-
     res.json({ ok: true, message: "Producto eliminado correctamente" });
+
   } catch (error) {
     await connection.rollback();
     console.error("DELETE PRODUCT ERROR:", error);
-    res.status(500).json({ error: "Error al eliminar producto" });
+    res.status(500).json({ error: error.message });
   } finally {
     connection.release();
   }
