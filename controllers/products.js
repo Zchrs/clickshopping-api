@@ -145,8 +145,6 @@ const createProduct = async (req, res) => {
 };
 
 
-
-
 const getProducts = async () => {
   const [products] = await pool.execute("SELECT * FROM products");
   return products;
@@ -234,59 +232,49 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
   const { id } = req.params;
   const connection = await pool.getConnection();
-  const isProduction = process.env.NODE_ENV === "production";
-
-  const UPLOADS_DIR = path.resolve(process.cwd(), "uploads");
 
   try {
     await connection.beginTransaction();
 
+    // 1️⃣ Buscar imágenes asociadas
     const [images] = await connection.execute(
-      "SELECT id, img_url, cloudinary_public_id FROM products_img WHERE product_id = ?",
+      "SELECT id, file_id FROM products_img WHERE product_id = ?",
       [id]
     );
 
-    for (const img of images) {
+    // 2️⃣ Si hay imágenes → borrar en Cloudinary
+    if (images.length > 0) {
+      const publicIds = images
+        .map(img => img.file_id)
+        .filter(Boolean); // elimina nulls
 
-      /* 🟢 DESARROLLO → borrar archivo local */
-      if (!isProduction && img.img_url) {
-        const relativePath = img.img_url.replace(/^https?:\/\/[^/]+/, "");
-        const localPath = path.join(
-          UPLOADS_DIR,
-          relativePath.replace("/uploads", "")
-        );
-
-        console.log("🧨 Deleting local:", localPath);
-
-        if (fs.existsSync(localPath)) {
-          fs.unlinkSync(localPath);
-        }
+      if (publicIds.length > 0) {
+        await cloudinary.api.delete_resources(publicIds);
       }
 
-      /* 🔵 PRODUCCIÓN → borrar en Cloudinary */
-      if (isProduction && img.cloudinary_public_id) {
-        console.log("☁️ Deleting Cloudinary:", img.cloudinary_public_id);
-        await cloudinary.uploader.destroy(img.cloudinary_public_id);
-      }
+      // borrar relaciones de imágenes en BD
+      await connection.execute(
+        "DELETE FROM products_img WHERE product_id = ?",
+        [id]
+      );
     }
 
-    /* 🗑️ DB */
-    await connection.execute(
-      "DELETE FROM products_img WHERE product_id = ?",
-      [id]
-    );
-
-    await connection.execute(
+    // 3️⃣ Siempre borrar producto
+    const [result] = await connection.execute(
       "DELETE FROM products WHERE id = ?",
       [id]
     );
 
     await connection.commit();
-    res.json({ ok: true });
 
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    res.json({ ok: true, message: "Producto eliminado correctamente" });
   } catch (error) {
     await connection.rollback();
-    console.error("❌ Delete product error:", error);
+    console.error("DELETE PRODUCT ERROR:", error);
     res.status(500).json({ error: "Error al eliminar producto" });
   } finally {
     connection.release();
