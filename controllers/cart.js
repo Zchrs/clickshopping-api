@@ -1,103 +1,132 @@
-const mysqls = require('mysql');
+const { pool } = require("../database/config");
+const { v4: uuidv4 } = require("uuid");
 const util = require('util');
+
 // Configuración de la conexión a la base de datos MySQL
 
 // Función para agregar un producto al carrito
-const addToCart = (req, res) => {
-  const { id, user_id, product_id, price, quantity } = req.body;
+const addToCart = async (req, res) => {
+  let { id, user_id, product_id, price, quantity } = req.body;
+  const connection = await pool.getConnection();
 
-  const connection = mysqls.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-  });
+  try {
+    // 🛡️ Normalizar valores
+    id = id || uuidv4();
+    quantity = Number(quantity);
+    price = Number(price);
 
-  connection.connect();
-
-  // Verificar si el usuario y el producto existen
-  const userAndProductExistQuery = `
-    SELECT * FROM users WHERE id = ? AND EXISTS (SELECT * FROM products WHERE id = ?)
-  `;
-  connection.query(userAndProductExistQuery, [user_id, product_id], (error, results) => {
-    if (error) {
-      console.error('Error al verificar usuario y producto:', error);
-      connection.end();
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    if (results.length === 0) {
-      connection.end();
-      return res.status(404).json({ error: 'Usuario o producto no encontrado' });
-      
+    if (!user_id || !product_id || !price || !quantity || quantity <= 0) {
+      return res.status(400).json({ error: "Datos inválidos" });
     }
 
-    // Insertar el producto en el carrito
-    const insertProductQuery = `
-      INSERT INTO user_cart (id, user_id, product_id, price, quantity) VALUES (?, ?, ?, ?, ?)
-    `;
-    connection.query(insertProductQuery, [id, user_id, product_id, price, quantity], (error, results) => {
-      if (error) {
-        console.error('Error al agregar producto al carrito:', error);
-        connection.end();
-        return res.status(500).json({ error: 'Error interno del servidor' });
-      }
-      connection.end();
-      return res.status(201).json({ message: 'Producto agregado al carrito exitosamente' });
-    });
-  });
+    await connection.beginTransaction();
+
+    // 🔍 Usuario
+    const [user] = await connection.execute(
+      "SELECT id FROM users WHERE id = ?",
+      [user_id]
+    );
+    if (user.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    // 🔍 Producto + stock
+    const [product] = await connection.execute(
+      "SELECT id, quantity FROM products WHERE id = ? FOR UPDATE",
+      [product_id]
+    );
+    if (product.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    if (product[0].quantity < quantity) {
+      await connection.rollback();
+      return res.status(400).json({ error: "Stock insuficiente" });
+    }
+
+    // 🔍 Carrito
+    const [exists] = await connection.execute(
+      "SELECT id, quantity FROM user_cart WHERE user_id = ? AND product_id = ?",
+      [user_id, product_id]
+    );
+
+    if (exists.length > 0) {
+      await connection.execute(
+        "UPDATE user_cart SET quantity = quantity + ? WHERE user_id = ? AND product_id = ?",
+        [quantity, user_id, product_id]
+      );
+    } else {
+      await connection.execute(
+        `INSERT INTO user_cart (id, user_id, product_id, price, quantity)
+         VALUES (?, ?, ?, ?, ?)`,
+        [id, user_id, product_id, price, quantity]
+      );
+    }
+
+    // ➖ Restar stock
+    await connection.execute(
+      "UPDATE products SET quantity = quantity - ? WHERE id = ?",
+      [quantity, product_id]
+    );
+
+    await connection.commit();
+    res.status(201).json({ ok: true, message: "Producto agregado al carrito" });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error("ADD TO CART ERROR:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    connection.release();
+  }
 };
+
 
 // Función para obtener todos los productos del carrito
 const getCartProducts = async (req, res) => {
+  const { user_id } = req.params;
+  const connection = await pool.getConnection();
+
   try {
-    const { user_id } = req.params; // Supongamos que el user_id está en los parámetros de la URL
-
-    // console.log('Received userId:', user_id);
-
-    // Validar que user_id sea una cadena no vacía
-    if (typeof user_id !== 'string' || user_id.trim() === '') {
-      throw new Error('Invalid user id');
+    if (!user_id) {
+      return res.status(400).json({ error: "user_id requerido" });
     }
 
-    // Crear conexión a la base de datos
-    const connection = mysqls.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-    });
+    // 🔍 Verificar usuario
+    const [user] = await connection.execute(
+      "SELECT id FROM users WHERE id = ?",
+      [user_id]
+    );
 
-    // Establecer la conexión
-    connection.connect();
-
-    // Promisify la función de consulta para poder usar async/await
-    const query = util.promisify(connection.query).bind(connection);
-
-    // Verificar si el usuario existe en la base de datos
-    const userCheckSql = 'SELECT id FROM users WHERE id = ?';
-    const userExists = await query(userCheckSql, [user_id]);
-
-    if (userExists.length === 0) {
-      // Si el usuario no existe, lanzar un error
-      throw new Error('User not found');
+    if (user.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    // Realizar la consulta a la base de datos para obtener los productos del carrito y la información adicional
-    const cartSql = `
-      SELECT uc.id, uc.user_id, uc.product_id, uc.price, uc.quantity, p.name, p.description, pi.img_url
+    // 🛒 Obtener productos del carrito
+    const [cartProductsRaw] = await connection.execute(`
+      SELECT 
+        uc.id,
+        uc.user_id,
+        uc.product_id,
+        uc.price,
+        uc.quantity,
+        p.name,
+        p.description,
+        pi.img_url
       FROM user_cart uc
       JOIN products p ON uc.product_id = p.id
       LEFT JOIN products_img pi ON uc.product_id = pi.product_id
       WHERE uc.user_id = ?
-    `;
-    const cartProductsRaw = await query(cartSql, [user_id]);
+    `, [user_id]);
 
-    // Consolidar los productos y sus imágenes
+    // 📦 Consolidar imágenes por producto
     const cartProducts = cartProductsRaw.reduce((acc, item) => {
       const product = acc.find(p => p.id === item.id);
 
       if (product) {
-        if (!product.img_urls.includes(item.img_url)) {
+        if (item.img_url && !product.img_urls.includes(item.img_url)) {
           product.img_urls.push(item.img_url);
         }
       } else {
@@ -116,17 +145,15 @@ const getCartProducts = async (req, res) => {
       return acc;
     }, []);
 
-    // Cerrar la conexión
-    connection.end();
-
-    // Devolver los productos del carrito como respuesta
     res.status(200).json(cartProducts);
+
   } catch (error) {
-    console.error('Error al obtener los productos del carrito:', error);
-    res.status(500).json({ error: error.message });
+    console.error("GET CART PRODUCTS ERROR:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    connection.release();
   }
 };
-
 // Función para actualizar un producto del carrito
   const updateCartProduct = async (req, res) => {
     try {

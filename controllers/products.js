@@ -14,73 +14,6 @@ const v4options = {
   ],
 };
 
-// const createProduct = async (req, res) => {
-//   const {
-//     id = uuidv4(),
-//     name,
-//     price,
-//     previousPrice,
-//     category,
-//     quantity,
-//     description,
-//     img_url = [],
-//   } = req.body;
-
-//   if (!Array.isArray(img_url)) {
-//     return res.status(400).json({ error: "img_url debe ser un array" });
-//   }
-
-//   const connection = await pool.getConnection();
-
-//   try {
-//     await connection.beginTransaction();
-
-//     const [exists] = await connection.execute(
-//       "SELECT COUNT(*) AS count FROM products WHERE name = ?",
-//       [name]
-//     );
-
-//     if (exists[0].count > 0) {
-//       await connection.rollback();
-//       return res.status(400).json({ error: "El producto ya está registrado" });
-//     }
-
-//     await connection.execute(
-//       `INSERT INTO products 
-//        (id, name, price, previousPrice, category, quantity, description)
-//        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-//       [id, name, price, previousPrice, category, quantity, description]
-//     );
-
-//     if (img_url.length > 0) {
-//       const images = img_url.map(url => [id, url]);
-//       await connection.query(
-//         "INSERT INTO products_img (product_id, img_url) VALUES ?",
-//         [images]
-//       );
-//     }
-
-//     await connection.commit();
-
-//     res.json({
-//       id,
-//       name,
-//       price,
-//       previousPrice,
-//       category,
-//       quantity,
-//       description,
-//       img_url,
-//     });
-//   } catch (error) {
-//     await connection.rollback();
-//     console.error(error);
-//     res.status(500).json({ error: "Error al crear el producto" });
-//   } finally {
-//     connection.release();
-//   }
-// };
-
 const createProduct = async (req, res) => {
   const {
     id = uuidv4(),
@@ -90,13 +23,14 @@ const createProduct = async (req, res) => {
     category,
     quantity,
     description,
-    img_url = [], // [{ url, public_id }]
+    img_url = [], // producción: [{ url, public_id }] | local: ["/uploads/x.jpg"]
   } = req.body;
 
   if (!Array.isArray(img_url)) {
     return res.status(400).json({ error: "img_url debe ser un array" });
   }
 
+  const isProduction = process.env.NODE_ENV === "production";
   const connection = await pool.getConnection();
 
   try {
@@ -119,12 +53,27 @@ const createProduct = async (req, res) => {
       [id, name, price, previousPrice, category, quantity, description]
     );
 
+    /* ===============================
+       🖼️ IMÁGENES
+       =============================== */
     if (img_url.length > 0) {
-      const images = img_url.map(img => [
-        id,
-        img.public_id,
-        img.url,
-      ]);
+      let images;
+
+      if (isProduction) {
+        // 🔵 PRODUCCIÓN (Cloudinary) → NO TOCAR
+        images = img_url.map(img => [
+          id,
+          img.public_id,
+          img.url,
+        ]);
+      } else {
+        // 🟢 DESARROLLO (local)
+        images = img_url.map(url => [
+          id,
+          url.public_id = url,
+          url,
+        ]);
+      }
 
       await connection.query(
         "INSERT INTO products_img (product_id, file_id, img_url) VALUES ?",
@@ -133,8 +82,8 @@ const createProduct = async (req, res) => {
     }
 
     await connection.commit();
-
     res.json({ ok: true, id });
+
   } catch (error) {
     await connection.rollback();
     console.error("CREATE PRODUCT ERROR:", error);

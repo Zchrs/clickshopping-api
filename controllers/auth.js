@@ -149,7 +149,7 @@ const loginUser = async (req, res) => {
       return jwt.sign(payload, secretKey, options);
     };
 
-    const { id, name, lastname, city, phone, address } = user;
+    const { id, name, lastname, city, phone, address, zip_code } = user;
     const token = generateJwt(id, name, lastname, email, role);
 
     res.json({
@@ -163,6 +163,7 @@ const loginUser = async (req, res) => {
         phone,
         email,
         address,
+        zip_code,
         role,
         token,
       },
@@ -189,46 +190,6 @@ const loginUser = async (req, res) => {
     });
   }
 };
-
-// const renewToken = async (req, res) => {
-//   const role = 'user';
-//   const user = req;
-//   const { id, name, lastname, city, phone, email, address } = user;
-//   // console.log(id, name, email, 'require desde renew');
-//   const generateJwt = (id, name, lastname, email, role) => {
-//     const payload = {
-//       id,
-//       name,
-//       lastname,
-//       city,
-//       phone,
-//       email,
-//       address,
-//       role
-//     };
-//     const secretKey = process.env.SECRET_JWT_SEED;
-//     const options = {
-//       expiresIn: '2h' 
-//     };
-//     const token = jwt.sign(payload, secretKey, options);
-//     return token;
-//   };
-
-//   const token = generateJwt( id, name, lastname, email, role );
-
-//   res.json({
-//     ok: true,
-//     id,
-//     name,
-//     lastname,
-//     city,
-//     phone,
-//     email,
-//     address,
-//     role,
-//     token
-//   });
-// };
 
 const renewToken = async (req, res) => {
   const role = "user";
