@@ -202,57 +202,65 @@ const getCartProducts = async (req, res) => {
 
 // Función para quitar un producto del carrito
 const removeFromCart = async (req, res) => {
+  const { user_id, product_id } = req.body;
+  const connection = await pool.getConnection();
+
   try {
-    const { user_id, product_id } = req.body;
+    await connection.beginTransaction();
 
-    console.log('Received userId:', user_id);
-    console.log('Received productId:', product_id);
-
-    // Validar que user_id y product_id sean cadenas no vacías
-    if (typeof user_id !== 'string' || user_id.trim() === '') {
-      throw new Error('Invalid user id');
-    }
-    if (typeof product_id !== 'string' || product_id.trim() === '') {
-      throw new Error('Invalid product id');
+    if (!user_id || !product_id) {
+      await connection.rollback();
+      return res.status(400).json({ error: "user_id y product_id son requeridos" });
     }
 
-    // Crear conexión a la base de datos
-    const connection = mysqls.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-    });
-
-    // Establecer la conexión
-    connection.connect();
-
-    // Promisify la función de consulta para poder usar async/await
-    const query = util.promisify(connection.query).bind(connection);
-
-    // Verificar si el usuario existe en la base de datos
-    const userCheckSql = 'SELECT id FROM users WHERE id = ?';
-    const userExists = await query(userCheckSql, [user_id]);
-
-    if (userExists.length === 0) {
-      // Si el usuario no existe, lanzar un error
-      throw new Error('User not found');
+    // 🔍 Verificar usuario
+    const [user] = await connection.execute(
+      "SELECT id FROM users WHERE id = ?",
+      [user_id]
+    );
+    if (user.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    // Eliminar el producto del carrito
-    const deleteSql = 'DELETE FROM user_cart WHERE user_id = ? AND product_id = ?';
-    await query(deleteSql, [user_id, product_id]);
+    // 🔍 Obtener producto del carrito
+    const [cartItem] = await connection.execute(
+      "SELECT quantity FROM user_cart WHERE user_id = ? AND product_id = ? FOR UPDATE",
+      [user_id, product_id]
+    );
 
-    // Cerrar la conexión
-    connection.end();
+    if (cartItem.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Producto no está en el carrito" });
+    }
 
-    // Devolver una respuesta de éxito
-    res.status(200).json({ message: 'Producto eliminado del carrito exitosamente' });
+    const cartQty = cartItem[0].quantity;
+
+    // ❌ Eliminar del carrito
+    await connection.execute(
+      "DELETE FROM user_cart WHERE user_id = ? AND product_id = ?",
+      [user_id, product_id]
+    );
+
+    // ➕ Devolver stock al producto
+    await connection.execute(
+      "UPDATE products SET quantity = quantity + ? WHERE id = ?",
+      [cartQty, product_id]
+    );
+
+    await connection.commit();
+    res.json({ ok: true, message: "Producto eliminado y stock restaurado" });
+
   } catch (error) {
-    console.error('Error al eliminar producto del carrito:', error);
-    res.status(500).json({ error: error.message });
+    await connection.rollback();
+    console.error("REMOVE FROM CART ERROR:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    connection.release();
   }
 };
+
+
 
 // Función para quitar un producto del carrito y agregarki a lista de deseos
 const moveToWishlist = async (req, res) => {
@@ -268,12 +276,7 @@ const moveToWishlist = async (req, res) => {
     }
 
     // Crear conexión a la base de datos
-    const connection = mysqls.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-    });
+    const connection = await pool.getConnection();
 
     // Establecer la conexión
     connection.connect();
