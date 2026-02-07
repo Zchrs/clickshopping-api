@@ -3,7 +3,12 @@ const { addToCart,
   removeFromCart, 
   updateCartProduct, 
   getCartProducts, 
-  moveToWishlist
+  moveToWishlist,
+  payCart,
+  getOrders,
+  approveOrder,
+  cancelOrder,
+  getUserOrders,
 } = require("../controllers/cart");
 
 
@@ -22,5 +27,15 @@ router.delete('/delete-product-cart/:product_id', removeFromCart);
 
 // actualizar la cantidad de un producto en el carrito
 router.put('/update/:productId', updateCartProduct);
+
+router.post("/pay-order", payCart);
+
+router.get("/get-orders", getOrders);
+
+router.get("/get-user-orders", getUserOrders);
+
+router.put("/approve-order/:orderId", approveOrder);
+
+router.put("/cancel-order/:orderId", cancelOrder);
 
 module.exports = router;

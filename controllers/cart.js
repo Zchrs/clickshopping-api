@@ -1,21 +1,19 @@
 const { pool } = require("../database/config");
-const { v4: uuidv4 } = require("uuid");
+const { getRandomRef } = require("../controllers/ref");
 const util = require('util');
 
 // Configuración de la conexión a la base de datos MySQL
 
 // Función para agregar un producto al carrito
 const addToCart = async (req, res) => {
-  let { id, user_id, product_id, price, quantity } = req.body;
+  const { user_id, product_id, price, quantity } = req.body;
   const connection = await pool.getConnection();
 
   try {
-    // 🛡️ Normalizar valores
-    id = id || uuidv4();
-    quantity = Number(quantity);
-    price = Number(price);
+    const qty = Number(quantity);
+    const unitPrice = Number(price);
 
-    if (!user_id || !product_id || !price || !quantity || quantity <= 0) {
+    if (!user_id || !product_id || !unitPrice || !qty || qty <= 0) {
       return res.status(400).json({ error: "Datos inválidos" });
     }
 
@@ -26,49 +24,38 @@ const addToCart = async (req, res) => {
       "SELECT id FROM users WHERE id = ?",
       [user_id]
     );
-    if (user.length === 0) {
+    if (!user.length) {
       await connection.rollback();
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    // 🔍 Producto + stock
+    // 🔍 Producto + lock
     const [product] = await connection.execute(
       "SELECT id, quantity FROM products WHERE id = ? FOR UPDATE",
       [product_id]
     );
-    if (product.length === 0) {
+    if (!product.length) {
       await connection.rollback();
       return res.status(404).json({ error: "Producto no encontrado" });
     }
 
-    if (product[0].quantity < quantity) {
+    if (product[0].quantity < qty) {
       await connection.rollback();
       return res.status(400).json({ error: "Stock insuficiente" });
     }
 
-    // 🔍 Carrito
-    const [exists] = await connection.execute(
-      "SELECT id, quantity FROM user_cart WHERE user_id = ? AND product_id = ?",
-      [user_id, product_id]
+    // 🛒 Insertar o sumar cantidad
+    await connection.execute(
+      `INSERT INTO user_cart (user_id, product_id, price, quantity)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)`,
+      [user_id, product_id, unitPrice, qty]
     );
 
-    if (exists.length > 0) {
-      await connection.execute(
-        "UPDATE user_cart SET quantity = quantity + ? WHERE user_id = ? AND product_id = ?",
-        [quantity, user_id, product_id]
-      );
-    } else {
-      await connection.execute(
-        `INSERT INTO user_cart (id, user_id, product_id, price, quantity)
-         VALUES (?, ?, ?, ?, ?)`,
-        [id, user_id, product_id, price, quantity]
-      );
-    }
-
-    // ➖ Restar stock
+    // ➖ Descontar stock
     await connection.execute(
       "UPDATE products SET quantity = quantity - ? WHERE id = ?",
-      [quantity, product_id]
+      [qty, product_id]
     );
 
     await connection.commit();
@@ -82,7 +69,6 @@ const addToCart = async (req, res) => {
     connection.release();
   }
 };
-
 
 // Función para obtener todos los productos del carrito
 const getCartProducts = async (req, res) => {
@@ -260,6 +246,303 @@ const removeFromCart = async (req, res) => {
   }
 };
 
+const payCart = async (req, res) => {
+  const { user_id, product_ids } = req.body;
+  const connection = await pool.getConnection();
+
+  try {
+    if (!user_id || !Array.isArray(product_ids) || !product_ids.length) {
+      return res.status(400).json({ error: "Datos inválidos" });
+    }
+
+    await connection.beginTransaction();
+
+    const [cartItems] = await connection.execute(
+      `SELECT c.product_id, c.quantity, c.price, p.quantity AS stock
+       FROM user_cart c
+       JOIN products p ON p.id = c.product_id
+       WHERE c.user_id = ? AND c.product_id IN (${product_ids.map(() => "?").join(",")})
+       FOR UPDATE`,
+      [user_id, ...product_ids]
+    );
+
+    if (!cartItems.length) {
+      await connection.rollback();
+      return res.status(404).json({ error: "No hay productos válidos para pagar" });
+    }
+
+    for (const item of cartItems) {
+      if (item.stock < item.quantity) {
+        await connection.rollback();
+        return res.status(400).json({
+          error: `Stock insuficiente para producto ${item.product_id}`,
+        });
+      }
+    }
+
+    const total = cartItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+
+    // 🟡 Crear orden pendiente
+    let orderId = getRandomRef();
+
+    const [orderResult] = await connection.execute(
+      "INSERT INTO orders (order_id, user_id, total, status) VALUES (?, ?, ?, 'pending')",
+      [orderId, user_id, total]
+    );
+
+     orderId = orderResult.insertId;
+
+    // 📦 Crear items
+    for (const item of cartItems) {
+      await connection.execute(
+        "INSERT INTO order_items (order_id, product_id, price, quantity) VALUES (?, ?, ?, ?)",
+        [orderId, item.product_id, item.price, item.quantity]
+      );
+    }
+
+    // 🧹 Limpiar carrito
+    await connection.execute(
+      `DELETE FROM user_cart
+       WHERE user_id = ? AND product_id IN (${product_ids.map(() => "?").join(",")})`,
+      [user_id, ...product_ids]
+    );
+
+    await connection.commit();
+    res.status(201).json({
+      ok: true,
+      message: "Pedido creado y pendiente de aprobación",
+      orderId,
+    });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error("PAY CART ERROR:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    connection.release();
+  }
+};
+
+const approveOrder = async (req, res) => {
+  const { orderId } = req.params;
+  const connection = await pool.getConnection();
+
+  try {
+    if (!orderId) return res.status(400).json({ error: "orderId requerido" });
+
+    await connection.beginTransaction();
+
+    // 🔒 Bloquear orden
+    const [[order]] = await connection.execute(
+      "SELECT id, status FROM orders WHERE id = ? FOR UPDATE",
+      [orderId]
+    );
+
+    if (!order) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Orden no encontrada" });
+    }
+
+    if (order.status !== "pending") {
+      await connection.rollback();
+      return res.status(400).json({ error: "Esta orden ya fue procesada" });
+    }
+
+    // 🔒 Obtener items reales
+    const [items] = await connection.execute(
+      "SELECT product_id, quantity FROM order_items WHERE order_id = ?",
+      [orderId]
+    );
+
+    for (const item of items) {
+      const [[product]] = await connection.execute(
+        "SELECT quantity FROM products WHERE id = ? FOR UPDATE",
+        [item.product_id]
+      );
+
+      if (product.quantity < item.quantity) {
+        await connection.rollback();
+        return res.status(400).json({
+          error: `Stock insuficiente para producto ${item.product_id}`,
+        });
+      }
+
+      await connection.execute(
+        "UPDATE products SET quantity = quantity - ? WHERE id = ?",
+        [item.quantity, item.product_id]
+      );
+    }
+
+    // ✅ Marcar orden como aprobada
+    await connection.execute(
+      "UPDATE orders SET status = 'approved' WHERE id = ?",
+      [orderId]
+    );
+
+    await connection.commit();
+    res.json({ ok: true, message: "Orden aprobada correctamente" });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error("APPROVE ORDER ERROR:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    connection.release();
+  }
+};
+
+const cancelOrder = async (req, res) => {
+  const { orderId } = req.params;
+  const connection = await pool.getConnection();
+
+  try {
+    if (!orderId) return res.status(400).json({ error: "orderId requerido" });
+
+    await connection.beginTransaction();
+
+    // 🔒 Bloquear orden
+    const [[order]] = await connection.execute(
+      "SELECT id, status FROM orders WHERE id = ? FOR UPDATE",
+      [orderId]
+    );
+
+    if (!order) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Orden no encontrada" });
+    }
+
+    if (order.status !== "pending") {
+      await connection.rollback();
+      return res.status(400).json({
+        error: "Solo se pueden cancelar órdenes pendientes",
+      });
+    }
+
+    // ❌ Cancelar orden
+    await connection.execute(
+      "UPDATE orders SET status = 'cancelled' WHERE id = ?",
+      [orderId]
+    );
+
+    await connection.commit();
+    res.json({ ok: true, message: "Orden cancelada correctamente" });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error("CANCEL ORDER ERROR:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    connection.release();
+  }
+};
+
+const getOrders = async (req, res) => {
+  try {
+    const [orders] = await pool.execute(
+      `SELECT 
+        o.id,
+        o.total,
+        o.status,
+        o.created_at,
+        u.id AS user_id,
+        u.name,
+        u.lastname,
+        u.email
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       ORDER BY o.created_at DESC`
+    );
+
+    res.json({ ok: true, orders });
+  } catch (error) {
+    console.error("GET ORDERS ERROR:", error);
+    res.status(500).json({ error: "Error interno" });
+  }
+};
+
+const getUserOrders = async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `
+      SELECT 
+        o.id AS order_id,
+        o.total,
+        o.status,
+        o.created_at,
+
+        u.id AS user_id,
+        u.name,
+        u.lastname,
+        u.email,
+
+        oi.product_id,
+        oi.price,
+        oi.quantity,
+
+        p.name AS product_name,
+        pi.img_url AS image_url
+
+      FROM orders o
+      LEFT JOIN users u ON u.id = o.user_id
+      LEFT JOIN order_items oi ON oi.order_id = o.id
+      LEFT JOIN products p ON p.id = oi.product_id
+      LEFT JOIN products_img pi ON pi.product_id = p.id
+      ORDER BY o.created_at DESC
+      `
+    );
+
+    // 🧠 Agrupar estructura
+    const ordersMap = {};
+
+    for (const row of rows) {
+      if (!ordersMap[row.order_id]) {
+        ordersMap[row.order_id] = {
+          id: row.order_id,
+          total: row.total,
+          status: row.status,
+          created_at: row.created_at,
+          user: {
+            id: row.user_id,
+            name: row.name,
+            lastname: row.lastname,
+            email: row.email,
+          },
+          items: [],
+        };
+      }
+
+      if (row.product_id) {
+        let product = ordersMap[row.order_id].items.find(
+          (p) => p.product_id === row.product_id
+        );
+
+        if (!product) {
+          product = {
+            product_id: row.product_id,
+            name: row.product_name,
+            price: row.price,
+            quantity: row.quantity,
+            images: [],
+          };
+          ordersMap[row.order_id].items.push(product);
+        }
+
+        if (row.image_url) {
+          product.images.push(row.image_url);
+        }
+      }
+    }
+
+    res.json({ ok: true, orders: Object.values(ordersMap) });
+  } catch (error) {
+    console.error("GET ORDERS ERROR:", error);
+    res.status(500).json({ error: "Error interno" });
+  }
+};
+
 
 
 // Función para quitar un producto del carrito y agregarki a lista de deseos
@@ -357,5 +640,10 @@ module.exports = {
   getCartProducts,
   updateCartProduct,
   removeFromCart,
-  moveToWishlist
+  moveToWishlist,
+  approveOrder,
+  getOrders,
+  getUserOrders,
+  cancelOrder,
+  payCart
 };
