@@ -21,13 +21,13 @@ let corsOptions;
 if (process.env.NODE_ENV === 'production') {
   corsOptions = {
     origin: [
-      'https://ultrasystem.shop',
-      'https://www.ultrasystem.shop',
-      'https://admin.ultrasystem.shop',
-      'https://www.admin.ultrasystem.shop',
-      'https://ultrasystem-api.vercel.app',
-      'https://www.ultrasystem-api.vercel.app',
-      'https://ultrasystem-api.vercel.app',
+      'https://clikshoping.shop',
+      'https://www.clikshoping.shop',
+      'https://admin.clikshoping.shop',
+      'https://www.admin.clikshoping.shop',
+      'https://clikshoping-api.vercel.app',
+      'https://www.clikshoping-api.vercel.app',
+      'https://clikshoping-api.vercel.app',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
