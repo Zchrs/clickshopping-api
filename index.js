@@ -37,7 +37,7 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   corsOptions = {
     origin: [
-      'http://localhost:4000',
+      'http://localhost:5173',
       'http://192.168.1.77:5173',
       'http://192.168.102.181:5173',
       'localhost:4000',
