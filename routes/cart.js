@@ -1,5 +1,6 @@
 const { Router } = require("express");
-const { addToCart, 
+const { 
+  addToCart, 
   removeFromCart, 
   updateCartProduct, 
   getCartProducts, 
@@ -9,6 +10,7 @@ const { addToCart,
   approveOrder,
   cancelOrder,
   getUserOrders,
+  sendPaymentProof,
 } = require("../controllers/cart");
 
 
@@ -37,5 +39,7 @@ router.get("/get-user-orders", getUserOrders);
 router.put("/approve-order/:orderId", approveOrder);
 
 router.put("/cancel-order/:orderId", cancelOrder);
+
+router.post("/payment-order-proof", sendPaymentProof);
 
 module.exports = router;

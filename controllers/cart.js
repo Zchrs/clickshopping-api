@@ -382,6 +382,13 @@ const approveOrder = async (req, res) => {
       [orderId]
     );
 
+        // 📦 Copiar orden a send_orders
+    const [sendOrderResult] = await connection.execute(
+      `INSERT INTO pending_send_orders (order_id, user_id, total, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'approved', NOW())`,
+      [order.id, order.user_id, order.total]
+    );
+
     await connection.commit();
     res.json({ ok: true, message: "Orden aprobada correctamente" });
 
@@ -543,7 +550,30 @@ const getUserOrders = async (req, res) => {
   }
 };
 
+const sendPaymentProof = async (req, res) => {
+  const { orderId, proof_url, proof_public_id } = req.body;
+  const connection = await pool.getConnection();
 
+  try {
+    if (!orderId || !proof_url) {
+      return res.status(400).json({ error: "Datos incompletos" });
+    }
+
+    await connection.execute(
+      `UPDATE orders 
+       SET proof_url = ?, proof_public_id = ?, status = 'payment_sent'
+       WHERE id = ?`,
+      [proof_url, proof_public_id, orderId]
+    );
+
+    res.json({ ok: true, message: "Comprobante recibido" });
+  } catch (error) {
+    console.error("SEND PAYMENT PROOF ERROR:", error);
+    res.status(500).json({ error: "Error interno" });
+  } finally {
+    connection.release();
+  }
+};
 
 // Función para quitar un producto del carrito y agregarki a lista de deseos
 const moveToWishlist = async (req, res) => {
@@ -644,6 +674,7 @@ module.exports = {
   approveOrder,
   getOrders,
   getUserOrders,
+  sendPaymentProof,
   cancelOrder,
   payCart
 };
