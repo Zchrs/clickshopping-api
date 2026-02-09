@@ -28,6 +28,7 @@ if (process.env.NODE_ENV === 'production') {
       'https://clikshoping-api.vercel.app',
       'https://www.clikshoping-api.vercel.app',
       'https://clikshoping-api.vercel.app',
+      'http://localhost:4000',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
@@ -36,10 +37,10 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   corsOptions = {
     origin: [
-      'http://localhost:5173',
+      'http://localhost:4000',
       'http://192.168.1.77:5173',
       'http://192.168.102.181:5173',
-      'localhost:4173',
+      'localhost:4000',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // Para permitir el intercambio de cookies
@@ -56,7 +57,7 @@ app.options('*', cors(corsOptions));
 const io = socketIo(server, {
   cors: {
     origin: corsOptions.origin,
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'PUT'],
     credentials: true,
   },
 });
@@ -71,9 +72,6 @@ app.use(express.json());
 
 // Configurar Express para servir archivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -98,6 +96,11 @@ app.use('/api/accounts/recovery', require('./routes/recovery'));
 app.use("/api/comments", require("./routes/comments"));
 
 app.use(express.static('uploads'));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 
 // Configuración de socket.io
 io.on('connection', (socket) => {
