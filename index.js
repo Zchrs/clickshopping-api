@@ -61,16 +61,20 @@ const io = socketIo(server, {
   },
 });
 
-app.get('/', (req, res) => {
-  res.send('Servidor corriendo!');
-  console.log(req.ip);
-});
+// app.get('/', (req, res) => {
+//   res.send('Servidor corriendo!');
+//   console.log(req.ip);
+// });
 
 // Configuración de Express para leer y parsear el body
 app.use(express.json());
 
 // Configurar Express para servir archivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Definir rutas

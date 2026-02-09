@@ -1,0 +1,198 @@
+.technologies {
+    position: fixed;
+    display: grid;
+    justify-content: center;
+    height: fit-content;
+    width: fit-content;
+    top: 150px;
+    padding: 20px 10px;
+    gap: 12px;
+    backdrop-filter: blur(5px);
+    background: rgba(128, 128, 128, 0.163);
+    border-radius: 0px 10px 10px 0px;
+
+    &__link{
+        display: grid;
+        font-weight: 200;
+        text-decoration: none;
+        font-size: 14px;
+        color: white;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+
+        &:hover{
+            color: #E34E26;
+        }
+    }
+
+    h2 {
+        font-size: 16px;
+        color: white;
+    }
+
+    &__container {
+        display: grid;
+        justify-content: center;
+        align-items: center;
+        gap: 24px;
+    }
+
+    &__card {
+        display: grid;
+        border-radius: 100%;
+        background: #E34E26;
+        justify-content: center;
+        align-items: center;
+        width: 50px;
+        height: 50px;
+
+        &:nth-child(2) {
+            background: #1b73ba;
+        }
+
+        &:nth-child(3) {
+            background: #F7DF1E;
+        }
+
+        &:nth-child(4) {
+            background: #00d9ff4d;
+        }
+
+        &:nth-child(5) {
+            background: #35495e8e;
+        }
+
+        &:nth-child(6) {
+            background: #fa01483c;
+        }
+
+        &:hover .info {
+            animation: box ease .5s backwards;
+            background: transparent;
+            width: 160px;
+            height: 100px;
+
+
+
+            &__content {
+                overflow: hidden;
+                opacity: 1;
+                border-radius: 10px 7px 7px 10px;
+                width: 100%;
+                height: 100%;
+
+                h3,
+                p,
+                a {
+                    margin: 0;
+                    padding: 0;
+                    text-align: center;
+                    line-height: 1;
+                    text-decoration: none;
+                    color: black;
+                }
+            }
+
+            &__shape {
+                width: 10px;
+                height: 15px;
+                transition: all ease .2s;
+            }
+        }
+
+        img {
+            // border: 3px solid;
+            width: 50px;
+            padding: 10px;
+
+        }
+    }
+
+    .info {
+        border-radius: 10px 7px 7px 10px;
+        // border: #1b73ba 1px solid;
+        // overflow: hidden;
+        position: absolute;
+        transition: all ease .5s;
+        display: block;
+        z-index: 100;
+        width: 0px;
+        height: 100px;
+        left: 67px;
+
+        &__content {
+            transition: all ease .5s;
+            display: grid;
+            gap: 4px;
+            padding: 7px 0;
+            overflow: hidden;
+            background: rgb(175, 172, 172);
+            // border: #1b73ba 1px solid;
+            border-radius: 10px 7px 7px 10px;
+            margin-left: 9px;
+            width: 0px;
+            height: 100%;
+            opacity: 0;
+
+            img {
+                // border: 1px solid;
+                margin: 0 auto;
+                width: 60px;
+            }
+        }
+
+
+
+        &__shape {
+            background: rgb(175, 172, 172);
+            transition: all ease .2s;
+            position: absolute;
+            content: "";
+            display: block;
+            margin: auto 0;
+            top: 0;
+            bottom: 0;
+            left: 0px;
+            width: 0px;
+            height: 0px;
+            clip-path: polygon(100% 0, 0 50%, 100% 100%);
+
+        }
+    }
+
+    @keyframes box {
+        0% {
+            height: 0px;
+            width: 1px;
+        }
+
+        50% {
+            width: 1px;
+        }
+
+        80% {
+            width: 1px;
+        }
+
+        100% {
+            height: 100px;
+            width: 160px;
+
+        }
+    }
+
+    @keyframes complete {
+        from {
+            width: 0px;
+            height: 130px;
+
+        }
+
+        to {
+            height: 10px;
+
+            width: 150px;
+        }
+    }
+}

@@ -1,0 +1,495 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.cdnfonts.com/css/agency-fb');
+
+                
+@import './_colors.css';
+
+/* Definición de las fuentes */
+:root {
+  --font-primary: "Montserrat", sans-serif;
+  --font-secondary: 'Agency FB', sans-serif;
+}
+
+/* TEXT */
+
+/* XSMALL */
+
+.xs-light {
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 1.4rem;
+  color: var(--text--secondary);
+}
+
+.xs-regular {
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.4rem;
+  color: var(--text--secondary);
+}
+
+@media (max-width: 700px) {
+  .xs-regular {
+    font-size: 0.7rem;
+  }
+}
+
+.xs-medium {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.4rem;
+  color: var(--text-primary);
+}
+
+.xs-semibold {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4rem;
+  color: var(--text-primary);
+}
+
+@media (max-width: 700px) {
+  .xs-semibold {
+    font-size: 0.5rem;
+  }
+}
+
+.xs-bold {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4rem;
+  color: var(--text--secondary);
+}
+
+/* SMALL */
+
+.s-light {
+  font-size: 1.2rem;
+  font-weight: 300;
+  line-height: 1.7rem;
+  color: var(--text--secondary);
+}
+
+.s-regular {
+  font-size: 1.2rem;
+  font-weight: 400;
+  line-height: 1.7rem;
+  color: var(--text-primary);
+}
+
+.s-medium {
+  font-size: 1.2rem;
+  font-weight: 500;
+  line-height: 1.7rem;
+  color: var(--text--secondary);
+}
+
+.s-semibold {
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.7rem;
+  color: var(--text-primary);
+}
+
+@media (max-width: 700px) {
+  .s-semibold {
+    font-size: 1rem;
+  }
+}
+
+.s-bold {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.7rem;
+  color: var(--text-primary);
+}
+
+/* BASE */
+
+.b-light {
+  font-size: 1.4rem;
+  font-weight: 300;
+  line-height: 2rem;
+  color: var(--text-primary);
+}
+
+.b-regular {
+  font-size: 1.4rem;
+  font-weight: 400;
+  line-height: 2rem;
+  color: var(--text-primary);
+}
+
+.b-medium {
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 2rem;
+  color: var(--text-primary);
+}
+
+.b-semibold {
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 2rem;
+  color: var(--text-primary);
+}
+
+.b-bold {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 2rem;
+  color: var(--text-primary);
+}
+
+/* LARGE */
+
+.l-light {
+  font-size: 1.7rem;
+  font-weight: 300;
+  line-height: 2.4rem;
+  /* color: var(--text-primary); */
+}
+
+.l-regular {
+  font-size: 1.7rem;
+  font-weight: 400;
+  line-height: 2.4rem;
+  /* color: var(--text-primary); */
+}
+
+.l-medium {
+  font-size: 1.7rem;
+  font-weight: 500;
+  line-height: 2.4rem;
+  color: var(--text-primary);
+}
+
+.l-semibold {
+  font-size: 1.7rem;
+  font-weight: 600;
+  line-height: 2.4rem;
+  /* color: var(--text-primary); */
+}
+
+.l-bold {
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 2.4rem;
+  /* color: var(--text-primary); */
+}
+
+/* H6 */
+
+.h6-light {
+  font-size: 2rem;
+  font-weight: 300;
+  line-height: 2.8rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h6-regular {
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 2.8rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h6-medium {
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 2.8rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h6-semibold {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 2.8rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h6-bold {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 2.8rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+/* H5 */
+
+.h5-light {
+  font-size: 2.4rem;
+  font-weight: 300;
+  line-height: 3.4rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h5-regular {
+  font-size: 2.4rem;
+  font-weight: 400;
+  line-height: 3.4rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h5-medium {
+  font-size: 2.4rem;
+  font-weight: 500;
+  line-height: 3.4rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h5-semibold {
+  font-size: 2.4rem;
+  font-weight: 600;
+  line-height: 3.4rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h5-bold {
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 3.4rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+/* H4 */
+
+.h4-light {
+  font-size: 3rem;
+  font-weight: 300;
+  line-height: 4rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h4-regular {
+  font-size: 3rem;
+  font-weight: 400;
+  line-height: 4rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h4-medium {
+  font-size: 3rem;
+  font-weight: 500;
+  line-height: 4rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h4-semibold {
+  font-size: 3rem;
+  font-weight: 600;
+  line-height: 4rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h4-bold {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 4rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+/* H3 */
+
+.h3-light {
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 2.9rem;
+  color: var(--text-white);
+  /* font-family: var(--font-secondary); */
+}
+
+.h3-regular {
+  font-size: 3.5rem;
+  font-weight: 400;
+  line-height: 4.9rem;
+  color: var(--text-primary);
+  /* font-family: var(--font-secondary); */
+}
+
+.h3-medium {
+  font-size: 3.5rem;
+  font-weight: 500;
+  line-height: 4.9rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h3-semibold {
+  font-size: 3.5rem;
+  font-weight: 600;
+  line-height: 4.9rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h3-bold {
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 4.9rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+/* H2 */
+
+.h2-small {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 5.9rem;
+  color: var(--text-primary);
+  /* font-family: var(--font-secondary); */
+}
+.h2-semi-small {
+  font-size: 1.8rem;
+  font-weight: 500;
+  line-height: 5.9rem;
+  color: var(--text-primary);
+  /* font-family: var(--font-secondary); */
+}
+.h2-light {
+  font-size: 3.2rem;
+  font-weight: 300;
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+}
+
+.h2-regular {
+  font-size: 4.2rem;
+  font-weight: 400;
+  /* color: var(--text-primary); */
+  /* font-family: var(--font-secondary); */
+}
+
+.h2-medium {
+  font-size: 4.2rem;
+  font-weight: 500;
+  line-height: 5.9rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h2-semibold {
+  font-size: 4.2rem;
+  font-weight: 600;
+  line-height: 5.9rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h2-bold {
+  font-size: 4.2rem;
+  font-weight: 900;
+  line-height: 5.9rem;
+  /* color: var(--text-tertiary); */
+  /* font-family: var(--font-secondary); */
+  @media (max-width: 800px) {
+    font-size: 3rem;
+  }
+}
+.h2-extra {
+  font-size: 7rem;
+  font-weight: 600;
+  line-height: 5.9rem;
+  color: var(--text-tertiary);
+  font-family: var(--font-primary);
+  @media (max-width: 820px) {
+    font-size: 5rem;
+  }
+}
+.h2-extra-medium {
+  font-size: 4rem;
+  font-weight: 400;
+  line-height: 5.9rem;
+  /* color: var(--text-primary); */
+  font-family: var(--font-primary);
+  @media (max-width: 1024px) {
+    font-size: 5.5rem;
+  }
+  @media (max-width: 920px) {
+    font-size: 3rem;
+  }
+}
+.h2-extra-simple {
+  font-size: 3rem;
+  font-weight: 400;
+  line-height: 5.9rem;
+  /* color: var(--text-dark); */
+  font-family: var(--font-primary);
+
+}
+/* H1 */
+
+.h1-light {
+  font-size: 5rem;
+  font-weight: 300;
+  line-height: 7rem;
+  /* color: var(--text-primary); */
+  font-family: var(--font-primary);
+}
+
+.h1-regular {
+  font-size: 5rem;
+  font-weight: 400;
+  line-height: 7rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h1-medium {
+  font-size: 5rem;
+  font-weight: 500;
+  line-height: 7rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h1-semibold {
+  font-size: 5rem;
+  font-weight: 600;
+  line-height: 7rem;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+
+.h1-bold {
+  font-size: 5rem;
+  font-weight: 900;
+  line-height: 140%;
+  color: var(--text-primary);
+  font-family: var(--font-secondary);
+}
+.big-link {
+  font-size: 2.5rem;
+  font-weight: 500;
+  line-height: 140%;
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+}
+
+@media (max-width: 700px) {
+  .h1-bold {
+    font-size: 4rem;
+  }
+}
+
+@media (max-width: 450px) {
+  .h1-bold {
+    font-size: 3rem;
+  }
+}
