@@ -164,13 +164,9 @@ router.post(
     validateFields,
   ],
   async (req, res) => {
-  try {
-    const product = await createProduct(req, res);
-    res.bumpProductsVersion(); // ✅ Notificar cambio
-    res.json(product);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const product = await createProduct(req, res);
+  await res.notifyProductsUpdate(); // 🔥 SSE
+  res.json(product);
   }
 );
 
@@ -200,13 +196,9 @@ router.put(
   '/update/:id',
   upload.array('img_url', 6),
   async (req, res) => {
-     try {
-    const product = await updateProduct(req, res);
-    res.bumpProductsVersion(); // ✅ Notificar cambio
-    res.json(product);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const product = await updateProduct(req, res);
+  await res.notifyProductsUpdate(); // 🔥 SSE
+  res.json(product);
   }
 );
 
@@ -220,13 +212,9 @@ router.post('/:id/sell-product', async (req, res) => {
 
 // ❌ ELIMINAR PRODUCTO
 router.delete('/delete/:id', async (req, res) => {
-   try {
-    await deleteProduct(req, res);
-    res.bumpProductsVersion(); // ✅ Notificar cambio
-    res.json({ ok: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  await deleteProduct(req, res);
+  await res.notifyProductsUpdate(); // 🔥 SSE
+  res.json({ ok: true });
 });
 
 
