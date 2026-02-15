@@ -95,8 +95,37 @@ const createProduct = async (req, res) => {
 
 
 const getProducts = async () => {
-  const [products] = await pool.execute("SELECT * FROM products");
-  return products;
+  try {
+    const [products] = await pool.execute(`
+      SELECT 
+        p.*,
+        GROUP_CONCAT(pi.img_url) as images
+      FROM products p
+      LEFT JOIN products_img pi ON p.id = pi.product_id
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+    `);
+
+    // Formatear imágenes
+    return products.map(product => ({
+      ...product,
+      images: product.images ? product.images.split(',') : []
+    }));
+    
+  } catch (error) {
+    console.error('Error en getProducts:', error);
+    throw error; // Lanzar el error para manejarlo en el endpoint
+  }
+};
+
+// Si necesitas la versión con req/res para rutas normales
+const getProductsHandler = async (req, res) => {
+  try {
+    const products = await getProducts();
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 
