@@ -9,14 +9,10 @@ const {
 } = require('../controllers/products');
 const { check } = require("express-validator");
 const { validateFields } = require("../middlewares/validate-form-data");
-const http = require('http');
-const socketIo = require('socket.io');
 const { getImagesByProductId, uploadImages } = require("../controllers/images");
 const multer = require('multer');
 const path = require('path');
 const router = Router();
-const server = http.createServer(router);
-const io = socketIo(server);
 
 
 const storage = multer.diskStorage({

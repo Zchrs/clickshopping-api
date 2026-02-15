@@ -25,9 +25,6 @@ if (process.env.NODE_ENV === 'production') {
       'https://www.clikshoping.shop',
       'https://admin.clikshoping.shop',
       'https://www.admin.clikshoping.shop',
-      'https://clikshoping-api.vercel.app',
-      'https://www.clikshoping-api.vercel.app',
-      'https://clikshoping-api.vercel.app',
       'http://localhost:4000',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
@@ -118,3 +115,153 @@ const port = process.env.PORT || 4000;
 server.listen(port, '0.0.0.0',() => {
   console.log(`Servidor iniciado en puerto ${port}`);
 });
+
+// const express = require('express');
+// const http = require('http');
+// const path = require('path');
+// const cors = require('cors');
+// const dotenv = require('dotenv');
+
+// // ==========================
+// // CONFIGURACIÓN INICIAL
+// // ==========================
+
+// const app = express();
+// const server = http.createServer(app);
+
+// // ==========================
+// // ENV
+// // ==========================
+
+// if (process.env.NODE_ENV === 'production') {
+//   dotenv.config({ path: '.env.production' });
+// } else {
+//   dotenv.config({ path: '.env.development' });
+// }
+
+// // ==========================
+// // CORS
+// // ==========================
+
+// let corsOptions;
+
+// if (process.env.NODE_ENV === 'production') {
+//   corsOptions = {
+//     origin: [
+//       'https://clikshoping.shop',
+//       'https://www.clikshoping.shop',
+//       'https://admin.clikshoping.shop',
+//       'https://www.admin.clikshoping.shop',
+//     ],
+//     methods: 'GET,POST,PUT,PATCH,DELETE',
+//     credentials: true,
+//   };
+// } else {
+//   corsOptions = {
+//     origin: [
+//       'http://localhost:5173',
+//       'http://localhost:4000',
+//     ],
+//     methods: 'GET,POST,PUT,PATCH,DELETE',
+//     credentials: true,
+//   };
+// }
+
+// app.use(cors(corsOptions));
+// app.options('*', cors(corsOptions));
+
+// // ==========================
+// // MIDDLEWARES
+// // ==========================
+
+// app.use(express.json());
+// app.use(express.static(path.join(__dirname, 'public')));
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// // ==========================
+// // 🔥 LONG POLLING LIGHT
+// // ==========================
+
+// // versión global de productos
+// let productsVersion = Date.now();
+
+// /**
+//  * ENDPOINT DE ACTUALIZACIONES
+//  * GET /api/products/updates?since=123456
+//  */
+// app.get('/api/products/updates', async (req, res) => {
+//   try {
+//     res.set('Cache-Control', 'no-store');
+
+//     const since = Number(req.query.since || 0);
+
+//     if (since < productsVersion) {
+//       // ⚠️ AJUSTA esto a tu DB real
+//       const Product = require('./models/Product');
+//       const products = await Product.find({ active: true });
+
+//       return res.json({
+//         updated: true,
+//         version: productsVersion,
+//         products,
+//       });
+//     }
+
+//     return res.json({
+//       updated: false,
+//       version: productsVersion,
+//     });
+//   } catch (error) {
+//     console.error('Polling error:', error);
+//     res.status(500).json({ updated: false });
+//   }
+// });
+
+// // ==========================
+// // RUTAS API
+// // ==========================
+
+// app.use('/api/admin/auth', require('./routes/admin'));
+// app.use('/api/users/auth', require('./routes/auth'));
+// app.use('/api/users', require('./routes/auth'));
+// app.use('/api/events', require('./routes/events'));
+// app.use('/api/invitation', require('./routes/invitations'));
+// app.use('/api/newsletter', require('./routes/newsletter'));
+// app.use('/api/uploads', require('./routes/images'));
+// app.use('/api/images', require('./routes/images'));
+
+// // 👉 INYECTAMOS productsVersion A LAS RUTAS DE PRODUCTOS
+// app.use('/api/products', (req, res, next) => {
+//   res.bumpProductsVersion = () => {
+//     productsVersion = Date.now();
+//   };
+//   next();
+// }, require('./routes/products'));
+
+// app.use('/api/cart', require('./routes/cart'));
+// app.use('/api/wishlist', require('./routes/wishlist'));
+// app.use('/api/ratings', require('./routes/ratings'));
+// app.use('/api/products/issues', require('./routes/IssueReports'));
+// app.use('/api/pqrs', require('./routes/pqrs'));
+// app.use('/api/likes', require('./routes/likes'));
+// app.use('/api/codes/registration/admin', require('./routes/regCodeAdmin'));
+// app.use('/api/accounts/recovery', require('./routes/recovery'));
+// app.use('/api/comments', require('./routes/comments'));
+
+// // ==========================
+// // SPA FALLBACK
+// // ==========================
+
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// });
+
+// // ==========================
+// // SERVER
+// // ==========================
+
+// const port = process.env.PORT || 4000;
+
+// server.listen(port, '0.0.0.0', () => {
+//   console.log(`Servidor iniciado en puerto ${port}`);
+// });
