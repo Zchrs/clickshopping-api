@@ -101,7 +101,6 @@
 // router.delete('/delete/:id', deleteProduct);
 // module.exports = router;
 
-
 const { Router } = require("express");
 const {
   createProduct,
@@ -111,28 +110,27 @@ const {
   deleteProduct,
   getSoldProducts,
   sellProduct
-} = require('../controllers/products');
+} = require("../controllers/products");
 
 const { check } = require("express-validator");
 const { validateFields } = require("../middlewares/validate-form-data");
 const { getImagesByProductId } = require("../controllers/images");
 
-const multer = require('multer');
-const path = require('path');
+const multer = require("multer");
+const path = require("path");
 
 const router = Router();
 
 // ==========================
 // MULTER
 // ==========================
-
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads'));
+    cb(null, path.join(__dirname, "../uploads"));
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
+    cb(null, Date.now() + "-" + file.originalname);
+  },
 });
 
 const upload = multer({
@@ -140,11 +138,11 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
-      return cb(new Error('Only images are allowed'));
+    if (![".jpg", ".jpeg", ".png", ".webp"].includes(ext)) {
+      return cb(new Error("Only images are allowed"));
     }
     cb(null, true);
-  }
+  },
 });
 
 // ==========================
@@ -164,58 +162,91 @@ router.post(
     validateFields,
   ],
   async (req, res) => {
-  const product = await createProduct(req, res);
-  await res.notifyProductsUpdate(); // 🔥 SSE
-  res.json(product);
+    try {
+      const product = await createProduct(req, res);
+      await res.notifyProductsUpdate(); // 🔥 SSE
+      res.json(product);
+    } catch (err) {
+      console.error("❌ createProduct:", err.message);
+      res.status(500).json({ error: "Error creating product" });
+    }
   }
 );
 
 // 📦 PRODUCTOS VENDIDOS
-router.get('/sold-products', async (req, res) => {
-  const products = await getSoldProducts(req, res);
-  res.json(products);
+router.get("/sold-products", async (req, res) => {
+  try {
+    const products = await getSoldProducts(req, res);
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: "Error getting sold products" });
+  }
 });
 
 // 📦 TODOS LOS PRODUCTOS
-router.get('/', async (req, res) => {
-  const products = await getProducts(req, res);
-  res.json(products);
+router.get("/", async (req, res) => {
+  try {
+    const products = await getProducts(req, res);
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: "Error getting products" });
+  }
 });
 
 // 📦 POR CATEGORÍA
-router.get('/category', async (req, res) => {
-  const products = await getProductsByCategory(req.query.category);
-  res.json(products);
+router.get("/category", async (req, res) => {
+  try {
+    const products = await getProductsByCategory(req.query.category);
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ error: "Error getting products by category" });
+  }
 });
 
-// 🖼 IMÁGENES
-router.get('/images/:product_id', getImagesByProductId);
+// 🖼 IMÁGENES DE PRODUCTO
+router.get("/images/:product_id", getImagesByProductId);
 
 // ✏️ ACTUALIZAR PRODUCTO
 router.put(
-  '/update/:id',
-  upload.array('img_url', 6),
+  "/update/:id",
+  upload.array("img_url", 6),
   async (req, res) => {
-  const product = await updateProduct(req, res);
-  await res.notifyProductsUpdate(); // 🔥 SSE
-  res.json(product);
+    try {
+      const product = await updateProduct(req, res);
+      await res.notifyProductsUpdate(); // 🔥 SSE
+      res.json(product);
+    } catch (err) {
+      console.error("❌ updateProduct:", err.message);
+      res.status(500).json({ error: "Error updating product" });
+    }
   }
 );
 
 // 🛒 VENDER PRODUCTO
-router.post('/:id/sell-product', async (req, res) => {
-  const { productId, quantity } = req.body;
-  const result = await sellProduct(productId, quantity);
-  res.bumpProductsVersion(); // 🔥 NOTIFICA CAMBIO
-  res.json({ success: true, saleId: result });
+router.post("/:id/sell-product", async (req, res) => {
+  try {
+    const { productId, quantity } = req.body;
+    const result = await sellProduct(productId, quantity);
+
+    await res.notifyProductsUpdate(); // 🔥 SSE
+
+    res.json({ success: true, saleId: result });
+  } catch (err) {
+    console.error("❌ sellProduct:", err.message);
+    res.status(500).json({ error: "Error selling product" });
+  }
 });
 
 // ❌ ELIMINAR PRODUCTO
-router.delete('/delete/:id', async (req, res) => {
-  await deleteProduct(req, res);
-  await res.notifyProductsUpdate(); // 🔥 SSE
-  res.json({ ok: true });
+router.delete("/delete/:id", async (req, res) => {
+  try {
+    await deleteProduct(req, res);
+    await res.notifyProductsUpdate(); // 🔥 SSE
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("❌ deleteProduct:", err.message);
+    res.status(500).json({ error: "Error deleting product" });
+  }
 });
-
 
 module.exports = router;
