@@ -1,0 +1,29 @@
+.auth{
+    display: grid;
+    place-items: center;
+    padding: 50px 100px;
+    color: white;
+
+    @media (max-width: 1024px) {
+        height: fit-content;
+        padding: 50px 20px;
+    }
+
+    a{
+        color: aliceblue;
+        text-decoration: none;
+    }
+    &-container{
+        display: grid;
+        height: fit-content;
+        width: 100%;
+        height: 700px;
+        border: white 1px solid;
+        overflow: hidden;
+        border-radius: 15px;
+
+        @media (max-width: 1024px) {
+            height: fit-content;
+        }
+    }
+}

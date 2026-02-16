@@ -1,0 +1,112 @@
+.vue-tel-input{
+    // background: green;
+    width: 100%;
+    height: fit-content;
+    padding: 0 12px;
+    display: flex;
+    border: 1px solid #DDE4ED;
+       border-radius: 8px;
+    gap: 10px;
+    
+    transition: all ease .3s;
+    outline: none !important;
+    box-shadow: none !important;
+
+    &:focus{
+        outline: none !important;
+        box-shadow: none !important;
+    }
+    :focus-within{
+        outline: none;
+        box-shadow: transparent !important;
+        border: none;
+    }
+    .vti{
+         box-shadow: 3px 3px 3px red;
+
+         &__flag{
+            display: grid;
+            align-items: center;
+            width: 18px;
+            height: 18px;
+        }
+        img{
+            height: 100%;
+        }
+         
+        &__dropdown{
+            background-color: transparent;
+            border: none;
+                padding: 0;
+            border-radius: 8px;
+            color: black;
+            
+            li{
+                font-family: 'Urbanist', sans-serif;
+                font-weight: 300;
+            }
+
+            .highlighted{
+                // color: black;
+                background: transparent;
+            }
+            &-list{
+                background: white;
+            }
+            &-arrow{
+                filter: brightness(0%);
+            }
+            &.above{
+                outline: none;
+                box-shadow: none;
+            }
+
+            
+        }
+
+        &__input{
+            outline: none;
+        box-shadow: none;
+        outline: none !important;
+        width: 100%;
+
+         &:focus{
+        outline: none;
+        box-shadow: none;
+        border-color: none;
+       }
+        &:focus-within{
+            outline: none !important;
+        box-shadow: none;
+        }
+        }
+    }
+
+    input{
+        padding: 12px 0px;
+       
+       background: transparent;
+       outline: none;
+        box-shadow: none;
+        color: black;
+        width: 100%;
+
+       &::placeholder{
+        color: #295170;
+        font-weight: 300;
+        font-size: 14px;
+        line-height: 140%;
+       }
+
+       &:focus{
+        outline: none !important;
+        box-shadow: none !important;
+        border-color: none !important;
+        border: none !important;
+       }
+        &:focus-within{
+            outline: none !important;
+        box-shadow: none !important;
+    }
+   }
+}

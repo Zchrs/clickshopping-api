@@ -1,0 +1,121 @@
+.css-w9q2zk-Input2 {
+    visibility: visible;
+    -webkit-flex: 1 1 auto;
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    display: inline-grid;
+    grid-area: 1/1/2/3;
+    grid-template-columns: 0 min-content;
+    outline: none;
+    padding: 6.5px 16px;
+    color: hsl(0, 0%, 20%);
+    box-sizing: border-box;
+    border: none;
+
+    @media (max-width: 920px) {
+        height: 58px !important;
+    }
+
+}
+
+.css-13cymwt-control {
+    border: none;
+    -webkit-align-items: center;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+    cursor: default;
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-flex-wrap: wrap;
+    -webkit-flex-wrap: wrap;
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap;
+    -webkit-box-pack: justify;
+    -webkit-justify-content: space-between;
+    padding: 4px 0px !important;
+    border-radius: 8px !important;
+    justify-content: space-between;
+    outline: none !important;
+    position: relative;
+    -webkit-transition: all 100ms;
+    transition: all 100ms;
+    background-color: transparent !important;
+    border: 1px solid hsl(0, 0%, 80%);
+    border-radius: 8px;
+    box-shadow: none;
+    box-sizing: border-box;
+    @media (max-width: 920px) {
+        height: 73px !important;
+    }
+}
+.css-13cymwt-control:focus-visible{
+    outline: none !important;
+    border: none !important;
+   
+}
+.css-t3ipsp-control{
+    padding: 4px 0px !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    outline: none !important;
+    @media (max-width: 920px) {
+        height: 73px !important;
+    }
+}
+.css-t3ipsp-control:focus{
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    outline: none !important;
+    @media (max-width: 920px) {
+        height: 73px !important;
+    }
+}
+.css-t3ipsp-control:focus-visible{
+    outline: none !important;
+    border: none !important;
+   
+}
+.css-t3ipsp-control:hover{
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    outline: none !important;
+    @media (max-width: 920px) {
+        height: 73px !important;
+    }
+}
+.css-t3ipsp-control:active{
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    outline: none !important;
+    @media (max-width: 920px) {
+        height: 73px !important;
+    }
+}
+
+.css-1nmdiq5-menu{
+    z-index: 100 !important; 
+   :focus-visible{
+    outline: none !important;
+    border: none !important;
+   }
+    img{
+        height: 20px !important;
+    }
+    svg{
+        filter: grayscale(50%);
+    }
+}
+
+.css-t3ipsp-control:focus-visible
+{
+    outline: none !important;
+    border: none !important;
+}
+
+:focus-visible {
+    outline: none;
+}

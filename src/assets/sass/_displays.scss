@@ -1,0 +1,110 @@
+.flex {
+    display: flex;
+    gap: 7px;
+    height: fit-content;
+    place-items: center;
+    background: transparent;
+    flex-wrap: wrap;
+}
+.flex-s {
+    display: flex;
+    width: 100%;
+    gap: 7px;
+    background: transparent;
+}
+.flex-sc {
+    display: flex;
+    background: transparent;
+
+}
+.flex-card{
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.grid {
+    display: grid;
+    gap: 5px;
+    background: transparent;
+}
+.grid-fr {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    @media (max-width: 1025px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+.grid-5fr {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    @media (max-width: 1025px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    @media (max-width: 768px) {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+.grid-4fr {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    @media (max-width: 1025px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+        padding: 0 20px;
+    }
+}
+.grid-custom{
+    display: grid;
+    grid-template-columns: 77% 10%;
+    background: transparent;
+    height: fit-content;
+    width: 100%;
+    gap: 5px;
+
+    @media (max-width: 1025px) {
+        display: flex;
+        flex-wrap: wrap;
+    }
+}
+.grid-s {
+    display: grid;
+    gap: 0px;
+    background: transparent;
+}
+
+.grid-columns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    background: transparent;
+
+
+}
+
+.flex-inside {
+    display: flex;
+    width: fit-content;
+    height: fit-content;
+    gap: 5px;
+    background: transparent;
+}
+
+.card{
+    /* border: 1px solid var(--text-white); */
+    border-radius: 10px;
+    align-items: start;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    img{
+        margin:auto;
+        max-width: 100%;
+        object-fit: contain;
+    }
+}

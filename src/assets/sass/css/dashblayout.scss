@@ -1,0 +1,42 @@
+.dashblayout{
+    width: 100%;
+    min-height: 100vh;
+    height: 100%;
+    display: grid;
+    color: beige;
+
+    &-header{
+        display: grid;
+        grid-column: 2 / 8;
+        grid-row: 1 ;
+        width: 100%;
+        height: fit-content;
+    }
+
+    &-nav{
+        display: grid;
+        grid-row: 1 / 8;
+        height: 100%;
+        // min-height: 100VH;
+        width: 100%;
+        
+    }
+
+    &-container{
+        grid-column: 2 / 8;
+        grid-row: 2 / 8;
+        background: rgba(128, 128, 128, 0.299);
+        display: grid;
+        width: 100%;
+        min-height: 100vh;
+        height: 100%;
+    }
+
+    &-footer{
+        display: grid;
+        height: 100%;
+        grid-row: 8 / 9;
+        grid-column: 1 / 8;
+        background: rgba(255, 255, 0, 0.16);
+    }
+}

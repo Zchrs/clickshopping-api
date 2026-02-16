@@ -1,0 +1,47 @@
+@import './assets/css/_colors.css';
+@import './assets/css/_displays.scss';
+@import './assets/css/_paddings.scss';
+@import './assets/css/_typography.css'; 
+@import './assets/css/_resetFontSize.css';
+
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+html{
+  background: white;
+}
+
+.body{
+  background: white;
+  align-items: start;
+  display: grid;
+  width: 100%;
+  height: 100%;
+}
+
+.warnings-box-left{
+  z-index: 100;
+  position: absolute;
+  left: 0;
+  transform: translateX(-100%) ;
+  display: grid;
+  width: 130px;
+  height: fit-content;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.796);
+  color: red;
+  font-size: 11px;
+}
+.warnings-box-right{
+  position: absolute;
+  display: grid;
+  width: fit-content;
+  height: fit-content;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.522);
+}
+
+

@@ -1,0 +1,63 @@
+.infodocs{
+    margin: auto;
+    display: grid;
+    width: 100%;
+    max-width: 1920px;
+    height: 100%;
+    min-height: 100vh;
+    gap: 24px;
+
+    &-header{
+        position: sticky;
+        display: grid;
+        color: black;
+        z-index: 999;
+        top: 0;     
+    }
+    &-subheader{
+        display: flex;
+        justify-content: space-between;
+        padding: 24px;
+        background: white;
+    }
+    &-contain{
+        display: grid;
+        gap: 24px;
+        padding: 0 24px;
+        grid-template-columns: 18% 62% 16%;
+        &-header{
+            display: grid;
+            width: 100%;
+            background: white;
+            align-self: end;
+            padding: 24px 0;
+        }
+        &-left{
+            display: grid;
+            background: white;
+            height: fit-content;
+            padding: 12px;
+            border-radius: 16px 0 0 0;
+        }
+        &-right{
+            display: grid;
+            background: white;
+            height: fit-content;
+            padding: 12px;
+            border-radius: 0 16px 0 0;
+        }
+        &-center{
+            display: grid;
+            gap: 24px;
+            height: fit-content;
+            // padding: 12px;
+        }
+    }
+    &-footer{
+        display: grid;
+        width: 100%;
+        height: fit-content;
+        color: white;
+    
+    }
+}

@@ -1,0 +1,72 @@
+.footer {
+    color: white;
+    backdrop-filter: blur(5px);
+    background: rgba(127, 115, 115, 0.163);
+    border-radius: 15px 15px 0px 0px;
+    height: 150px;
+    width: 85%;
+    margin: auto;
+    display: grid;
+    padding: 30px 150px;
+
+    @media (max-width: 700px) {
+        padding: 30px 15px;
+        height: fit-content;
+        width: 90%;
+    }
+
+    &-container{
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+
+        @media (max-width: 500px) {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            height: fit-content;
+        }
+        
+        div{
+            display: grid;
+            height: fit-content;
+            gap: 4px;
+
+            h3{
+                font-weight: 100;
+                font-size: 14px;
+                margin-bottom: 7px;
+            }
+            a, p{
+                color: rgb(184, 181, 181);
+                font-weight: 100;
+                text-decoration: none;
+                transition: all ease .4s;
+                font-size: 11px;
+                width: fit-content;
+
+                &:hover{
+                    color: white;
+                    text-decoration: underline;
+                    transition: all ease .4s;
+                }
+            }
+        }
+    }
+
+    &__p{
+        position: absolute;
+        text-align: center;
+        color: rgb(184, 181, 181);
+        width: 100%;
+        bottom: 0;
+        font-weight: 100;
+    
+        strong{
+            font-size: 14px;
+        }
+    }
+    .active{
+            color: white;
+            text-decoration: underline;
+            transition: all ease .4s;
+    }
+}

@@ -1,0 +1,195 @@
+.login{
+    display: flex;
+    position: relative;
+
+    @media (max-width: 1024px) {
+        display: grid;
+    }
+
+    &-titles{
+        display: grid;
+        gap: 5px;
+    }
+    
+    &-logo{
+        display: grid;
+        margin: auto;
+        width: 150px;
+        img{
+            width: 100%;
+            filter: drop-shadow(-1px 1px 1px white);
+        }
+    }
+
+    &-left{
+        position: relative;
+        padding: 24px;
+        display: grid;
+        background: #34b0bea5;
+        clip-path: polygon(0 0, 100% 0, 70% 100%, 0% 100%);
+        width: 50%;
+        height: 100%;
+    
+        h3{
+            font-weight: 400;
+            font-size: 12px;
+        }
+        p{
+            font-size: 12px;
+        }
+        a{
+            font-size: 11px;
+            &:hover{
+                text-shadow: black 1px 1px 1px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            width: 100%;
+            clip-path: polygon(0% 0%, 100% 0%, 100% 90%, 0% 100%);
+        }
+
+        h2{
+            font-size: 30px;
+        }
+        
+    }
+    &-form{
+        width: 50%;
+        display: grid;
+    }
+    &-right{
+        place-items: center;
+        position: absolute;
+        padding: 25px 50px 0px 50px;
+        display: grid;
+        background: rgba(255, 255, 255, 0.438);
+        right: 0;
+        width: 64.95%;
+        height: 100%;
+        clip-path: polygon(28% 0, 100% 0, 100% 100%, 0% 100%);
+
+        @media (max-width: 1024px) {
+            padding: 70px 10px 70px 10px;
+            position: relative;
+            width: 100%;
+            clip-path: polygon(0% 0, 100% 5%, 100% 100%, 0% 100%);
+        }
+
+        a{
+            display: grid;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            padding-top: 5px;
+            font-weight: 500;
+
+            &:hover{
+                text-shadow: black 1px 1px 1px;
+            }
+        }
+
+        .group{
+            display: grid;
+            width: fit-content;
+            margin: auto;
+            gap: 2px;
+
+            @media (max-width: 700px) {
+                width: 70%;
+            }
+        }
+        .group2{
+            display: grid;
+            margin: auto;
+            width: 100%;
+            gap: 2px;
+        }
+
+        .warnings-form{
+            display: inline;
+            width: 50%;
+            text-align: center;
+            /* border: #34B0BE 1px solid; */
+            transition: all ease .3s;
+            color: #ff4f6f;
+            padding: 0;
+            margin: 0px auto;
+            font-weight: 400;
+            /* text-shadow: 
+            rgb(243, 107, 107) 1px 1px 1px,
+            rgb(243, 107, 107) -1px -1px 1px
+            ; */
+        }
+        .warnings-input{
+            border: #ff4f6f 1px solid
+        }
+        .button-container button{
+            position: relative;
+            display: grid;
+            place-items: center;
+            width: 100px;
+            height: 30px;
+            border: none;
+            border-radius: 5px;
+            background: #34b0beca;
+            color: white;
+            cursor: pointer;
+            transition: all ease .3s;
+            overflow: hidden;
+        }
+        .button-container button:hover{
+            background: #34b0be;
+            text-shadow: black 1px 1px 1px;
+        }
+
+       
+        .button-container{
+            display: grid;
+            gap: 8px;
+            width: fit-content;
+            margin-top: 5px;
+        }
+
+        form{
+            align-items: center;
+            position: relative;
+            width: 130%;
+            display: grid;
+            font-weight: 200;
+   
+            @media (max-width: 1024px) {
+                left: -40px;
+            }
+   
+            @media (max-width: 400px) {
+               width: 100%;
+               left: 0;
+            }
+        }
+        select{
+            height: 40px;
+        }
+
+        label{
+            font-size: 14px;
+        }
+        input{
+            margin-bottom: 5px;
+            display: grid;
+            width: 100%;
+            padding: 0 8px;
+            height: 35px;
+            border-radius: 6px;
+            outline: none;
+            border: none;
+        }
+        textarea{
+            display: grid;
+            height: 120px;
+            border-radius: 6px;
+            padding: 12px;
+
+        }
+    }
+}

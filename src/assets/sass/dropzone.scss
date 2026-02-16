@@ -1,0 +1,70 @@
+
+.card-profile {
+    background-color: white;
+    border-radius: 8px;
+    &:not(:last-child) {
+      margin-bottom: 24px;
+    }
+    &__border {
+      padding: 24px;
+      width: 100%;
+      border: 1px dashed #ec33364f;
+      border-radius: 4px;
+    }
+    &__drag {
+      display: block;
+      margin: 0 auto;
+      padding: 16px;
+      width: 100%;
+  
+      @media (max-width: 460px) {
+        width: 90%;
+      }
+    }
+    &__input {
+      display: none;
+    }
+    &__title {
+      font-size: 16px;
+      font-weight: 300;
+      line-height: 24px;
+      text-align: center;
+    }
+    &__upload {
+      font-size: 16px;
+      font-weight: 300;
+      line-height: 24px;
+      letter-spacing: 0px;
+      text-align: center;
+      color: black;
+
+      strong{
+        font-weight: 700;
+      }
+    }
+  }
+  
+  .active-dropzone {
+    background-color: rgba(51, 106, 179, 0.05);
+  }
+  
+  .file-info {
+    gap: 4px;
+    display: grid;
+    text-align: center;
+    margin-top: 6px;
+    color: black;
+  }
+  .selected-image{
+    margin: auto;
+    width: 30%;
+  }
+  .group{
+    text-align: center;
+    place-content: center;
+    display: grid;
+    gap: 10px;
+    p{
+      color: green;
+    }
+  }

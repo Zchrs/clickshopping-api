@@ -1,0 +1,16 @@
+$base-font-size: 62.5%;
+
+:root {
+  font-size: $base-font-size;
+  * {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+  body {
+    font-size: 1.4rem;
+    font-family: $font-primary;
+  }
+}
+
+

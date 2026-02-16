@@ -1,0 +1,37 @@
+
+:root {
+--primary: #00a9ff;
+--primary-light: #00aaff2d;
+--secondary: #6C6D70;
+--tertiary: black;
+--success: #2B9176;
+--danger: #E54476;
+--warning: rgb(255, 217, 0);
+--info: rgb(0, 255, 255);
+--light: #f9fafb;
+--dark: black;
+
+/* TEXT COLORS */
+
+--text-primary: #00a9ff;
+--text-secondary: #6C6D70;
+--text-tertiary: black;
+--text-white: #ffffff;
+--text-brand: #4f9db4;
+
+/* BACKGROUNDS */
+
+--b-white: #00a9ff;
+
+/* SHADOWS */
+
+--ds-xs: 0px 1px 2px rgba(16, 24, 40, 0.05);
+--ds-s: 0px 1px 2px -1px rgba(16, 24, 40, 0.1), 0px 1px 3px rgba(16, 24, 40, 0.1);
+--ds-m: 0px 2px 4px -2px rgba(16, 24, 40, 0.1),
+  0px 4px 6px -1px rgba(16, 24, 40, 0.1);
+--ds-l: 0px 4px 6px -4px rgba(16, 24, 40, 0.1),
+  0px 10px 15px -3px rgba(16, 24, 40, 0.1);
+--ds-xl: 0px 8px 10px -6px rgba(16, 24, 40, 0.1),
+  0px 20px 25px -5px rgba(16, 24, 40, 0.1);
+--ds-xxl: 0px 40px 100px -12px rgba(16, 24, 40, 0.1);
+}

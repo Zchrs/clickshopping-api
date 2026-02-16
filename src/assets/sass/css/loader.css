@@ -1,0 +1,42 @@
+.loader{
+    position: relative;
+    display: block;
+    width: fit-content;
+    margin: 0px auto;
+    left: 0;
+    right: 0;
+    padding: 5px;
+    /* border: white 1px solid; */
+    text-align: center;
+    /* background: rgb(2, 106, 101); */
+    color: white;
+    font-weight: 200;
+    transition: all ease .5s;
+    animation: zoom .5s ;
+}
+
+@keyframes zoom {
+    from{
+        transform: scale(0.0);
+    }
+    to{
+        transform: scale(1.1);
+    }
+}
+
+@media (max-width: 1000px){
+    .loader{
+        position: relative;
+        display: block;
+        left: 0;
+        right: 0;
+        padding: 5px;
+        /* border: white 1px solid; */
+        text-align: center;
+        /* background: rgb(2, 106, 101); */
+        color: white;
+        font-weight: 200;
+        transition: all ease .5s;
+        animation: zoom .5s ;
+    }
+}

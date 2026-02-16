@@ -1,0 +1,40 @@
+.message{
+    position: relative;
+    display: block;
+    width: fit-content;
+    margin:5px auto;
+    left: 0;
+    right: 0;
+    padding: 7px;
+    font-weight: 200;
+    text-align: center;
+    background: rgb(1, 101, 1);
+    color: white;
+    animation: zoom .5s;
+}
+
+@keyframes zoom {
+    from{
+        transform: scale(0.0);
+    }
+    to{
+        transform: scale(1.1);
+    }
+}
+
+@media (max-width: 1000px){
+    .message{
+        position: relative;
+        display: block;
+        margin:5px auto;
+        left: 0;
+        right: 0;
+        padding: 7px;
+        font-weight: 200;
+        text-align: center;
+        background: rgb(1, 101, 1);
+        color: white;
+        animation: zoom .5s;
+    }
+    
+}

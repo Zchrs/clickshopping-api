@@ -1,0 +1,54 @@
+.navDash{
+    display: grid;
+    height: 100%;
+    background: rgba(14, 5, 5, 0.8);
+    padding: 24px 5px;
+    &__p{
+        font-size: 20px;
+    }
+    &-avatar{
+        display: grid;
+        place-items: center;
+        padding: 0 0 20px 0;
+        grid-row: 1;
+        width: 100%;
+        height: fit-content;
+        border-bottom: rgb(255, 255, 255) 1px solid;
+
+        &__container{
+            place-items: center;
+            display: grid;
+            gap: 10px;
+        }
+    }
+
+    &-menu{
+        width: 100%;
+        text-align: center;
+        height: fit-content;
+        grid-row: 2 / 6;
+       
+        height: fit-content;
+        display: grid;
+        margin: 0 auto;
+        // border: white 1px solid;
+
+       
+        a{
+            text-decoration: none;
+            color: white;
+            font-size: 16px;
+            padding: 10px 0;
+            cursor: pointer;
+        }
+    }
+
+    &-photo{
+        border-top: white 1px solid;
+        display: flex;
+        width: 150px;
+        height: 150px;
+        background: rgb(100, 95, 95);
+        border-radius: 50%;
+    }
+}

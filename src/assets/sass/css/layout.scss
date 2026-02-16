@@ -1,0 +1,67 @@
+.layout {
+    display: grid;
+    min-height: 100vh;
+    height: 100%;
+
+
+    //--------------------------- header -----------------------------
+    &__header {
+        width: 100%;
+        position: sticky;
+        top: 0;
+        display: block;
+        z-index: 100;
+        // background: yellowgreen;
+        height: fit-content;
+    }
+
+    //-------------------------- nav ----------------------
+    &__nav {
+        display: block;
+        position: relative;
+        min-height: 100vh;
+        height: 100%;
+        z-index: 100;
+
+        @media (max-width: 1024px) {
+            display: none;
+        }
+    }
+
+    //---------------------- fin nav ----------------------
+    //----------------------- fin header -----------------------------
+
+    //--------------------------- body -----------------------------
+
+    &__container {
+        // border: yellow 1px solid;
+        display: grid;
+        grid-template-columns: 100px 1fr;
+
+        @media (max-width: 1024px) {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    &__contain {
+        display: grid;
+        width: 100%;
+
+
+
+        @media (max-width: 1024px) {
+            padding: 10px;
+            margin: auto;
+            // border: 1px solid;
+            
+
+        }
+    }
+
+    //----------------------- fin body -----------------------------
+
+    &__footer {
+        // background: goldenrod;
+        height: fit-content;
+    }
+}
