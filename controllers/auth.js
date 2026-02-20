@@ -47,7 +47,7 @@ const createUser = async (req, res) => {
     try {
       const transporter = nodemailer.createTransport({
         host: process.env.EMAIL_SERVER,
-        port: Number(process.env.EMAIL_SERVER_PORT),
+        port: "465",
         secure: true,
         auth: {
           user: process.env.EMAIL_SENDER_TO_VERIFY,
