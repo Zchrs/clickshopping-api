@@ -11,101 +11,176 @@ const { v4: uuidv4 } = require('uuid');
 
 // Crear usuarios
 const createUser = async (req, res) => {
-  // Genera ambos identificadores al inicio
-  const userId = uuidv4(); // ID único para el usuario
-  const verificationToken = crypto.randomBytes(32).toString('hex'); // Token para verificación
+  const userId = uuidv4();
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  let connection;
 
   try {
-    const connection = await mysqls.createConnection({
+    connection = await mysqls.createConnection({
       host: process.env.DB_HOST,
       user: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
     });
 
-    // Hashea la contraseña
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
-    // Verifica email y teléfono...
-    // Inserta el usuario con AMBOS identificadores
-const [result] = await connection.execute(
-  `INSERT INTO users (
-    id, country, name, lastname, phone,
-    email, role, password, verificationToken
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  [
-    userId,
-    req.body.country,
-    req.body.name,
-    req.body.lastname,
-    req.body.phone,
-    req.body.email,
-    req.body.role,
-    hashedPassword,
-    verificationToken
-  ]
-);
+    // 1️⃣ INSERTAR USUARIO (siempre debe funcionar)
+    const [result] = await connection.execute(
+      `INSERT INTO users (
+        id, country, name, lastname, phone,
+        email, role, password, verificationToken
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        req.body.country,
+        req.body.name,
+        req.body.lastname,
+        req.body.phone,
+        req.body.email,
+        req.body.role,
+        hashedPassword,
+        verificationToken
+      ]
+    );
 
-    if (result.affectedRows > 0) {
-      // Configura el transporter aquí mismo
-      const transporter = nodemailer.createTransport({
-        service: process.env.EMAIL_SENDER_TO_VERIFY,
-        host: process.env.EMAIL_SERVER,
-        port: process.env.EMAIL_SERVER_PORT,
-        secure: true,
-        auth: {
-          user: process.env.EMAIL_SENDER_TO_VERIFY,
-          pass: process.env.EMAIL_PASSWORD,
-        },
-      });
-
-      // Configura el correo con el verificationToken
-     const verifyUrl = `${process.env.APP_FRONT_URL}/#/clients/account/verify/${userId}/${verificationToken}`;
-
-      // Ruta absoluta del archivo HTML
-      const emailPath = path.join(process.cwd(), 'services', 'verify-email.html');
-          
-      // Leer HTML
-      let htmlTemplate = fs.readFileSync(emailPath, 'utf8');
-          
-      // Reemplazar variables
-      htmlTemplate = htmlTemplate
-        .replace(/{{VERIFY_URL}}/g, verifyUrl)
-        .replace(/{{YEAR}}/g, new Date().getFullYear());
-          
-      // Configurar correo
-      const mailBody = {
-        from: '"Clickshopping" <noreply@clikshoping.shop>',
-        to: req.body.email,
-        subject: 'Verifica tu correo electrónico',
-        html: htmlTemplate,
-        attachments: [
-          {
-            filename: 'logo.png',
-            path: path.join(process.cwd(), 'services/logo.png'),
-            cid: 'logo@clickshopping'
-          }
-        ]
-      };
-
-      // Envía el correo y responde
-      await transporter.sendMail(mailBody);
-      
-      res.status(201).json({
-        id: userId,
-        message: 'Usuario registrado. Por favor verifica tu correo.',
-      });
+    if (result.affectedRows === 0) {
+      throw new Error('No se pudo insertar el usuario');
     }
 
-    await connection.end();
-  } catch (error) {
-    console.error('Error en createUser:', error);
-    res.status(500).json({ 
-      error: "Error en el servidor",
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    // 2️⃣ RESPONDER INMEDIATAMENTE (el usuario ya está creado)
+    res.status(201).json({
+      success: true,
+      id: userId,
+      message: 'Usuario registrado. Por favor verifica tu correo.',
     });
+
+    // 3️⃣ ENVIAR EMAIL EN SEGUNDO PLANO (después de responder)
+    try {
+      console.log(`📧 Enviando email de verificación a ${req.body.email}...`);
+      
+      const emailSent = await sendVerificationEmail(
+        req.body.email,
+        userId,
+        verificationToken
+      );
+
+      if (emailSent) {
+        console.log(`✅ Email enviado a ${req.body.email}`);
+      } else {
+        console.error(`❌ Falló el envío a ${req.body.email}`);
+      }
+    } catch (emailError) {
+      // El error del email NO afecta la respuesta al cliente
+      console.error('❌ Error enviando email (en segundo plano):', {
+        email: req.body.email,
+        userId: userId,
+        error: emailError.message,
+        stack: emailError.stack
+      });
+      
+      // Aquí podrías guardar el error en una tabla de "emails_pendientes"
+      await saveFailedEmail(req.body.email, userId, verificationToken);
+    }
+
+  } catch (error) {
+    console.error('❌ Error en createUser:', error);
+    
+    // Solo enviamos error si el usuario NO se creó
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        success: false,
+        error: "Error en el servidor",
+        message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  } finally {
+    if (connection) await connection.end();
   }
 };
+
+// ==========================
+// FUNCIÓN SEPARADA PARA ENVIAR EMAIL
+// ==========================
+async function sendVerificationEmail(email, userId, verificationToken) {
+  // Validar configuración de email
+  if (!process.env.EMAIL_SERVER || !process.env.EMAIL_SENDER_TO_VERIFY) {
+    console.error('❌ Configuración de email incompleta');
+    return false;
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_SERVER,
+      port: parseInt(process.env.EMAIL_SERVER_PORT) || 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_SENDER_TO_VERIFY,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+      tls: {
+        rejectUnauthorized: false, // Importante para producción
+      },
+      // Timeout más largo para producción
+      connectionTimeout: 30000,
+      greetingTimeout: 30000,
+      socketTimeout: 30000,
+    });
+
+    // Verificar conexión SMTP
+    await transporter.verify();
+    console.log('✅ Conexión SMTP verificada');
+
+    const verifyUrl = `${process.env.APP_FRONT_URL}/#/clients/account/verify/${userId}/${verificationToken}`;
+    
+    // Usar ruta absoluta para archivos
+    const emailPath = path.join(__dirname, '../services/verify-email.html');
+    const logoPath = path.join(__dirname, '../services/logo.png');
+
+    // Verificar que existe el template
+    if (!fs.existsSync(emailPath)) {
+      throw new Error(`Template no encontrado: ${emailPath}`);
+    }
+
+    let htmlTemplate = fs.readFileSync(emailPath, 'utf8');
+    htmlTemplate = htmlTemplate
+      .replace(/{{VERIFY_URL}}/g, verifyUrl)
+      .replace(/{{YEAR}}/g, new Date().getFullYear());
+
+    const mailOptions = {
+      from: `"Clickshopping" <${process.env.EMAIL_SENDER_TO_VERIFY}>`,
+      to: email,
+      subject: 'Verifica tu correo electrónico - Clickshopping',
+      html: htmlTemplate,
+    };
+
+    // Solo adjuntar logo si existe
+    if (fs.existsSync(logoPath)) {
+      mailOptions.attachments = [{
+        filename: 'logo.png',
+        path: logoPath,
+        cid: 'logo@clickshopping'
+      }];
+    }
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Email enviado: ${info.messageId}`);
+    return true;
+
+  } catch (error) {
+    console.error('❌ Error en sendVerificationEmail:', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response
+    });
+    
+    // Registrar el error para debugging
+    await logEmailError(email, userId, error);
+    
+    return false;
+  }
+}
 
 const verifyUser = async (req, res) => {
   const { token } = req.params;
