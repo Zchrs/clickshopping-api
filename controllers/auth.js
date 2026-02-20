@@ -4,6 +4,8 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const mysqls = require("mysql2/promise");
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
 
@@ -26,23 +28,23 @@ const createUser = async (req, res) => {
 
     // Verifica email y teléfono...
     // Inserta el usuario con AMBOS identificadores
-    const [result] = await connection.execute(
-      `INSERT INTO users (
-        id, country, name, lastname, phone,
-        email, role, password, verificationToken
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        userId,
-        req.body.country,
-        req.body.name,
-        req.body.lastname,
-        req.body.phone,
-        req.body.email,
-        req.body.role,
-        hashedPassword,
-        verificationToken
-      ]
-    );
+const [result] = await connection.execute(
+  `INSERT INTO users (
+    id, country, name, lastname, phone,
+    email, role, password, verificationToken
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  [
+    userId,
+    req.body.country,
+    req.body.name,
+    req.body.lastname,
+    req.body.phone,
+    req.body.email,
+    req.body.role,
+    hashedPassword,
+    verificationToken
+  ]
+);
 
     if (result.affectedRows > 0) {
       // Configura el transporter aquí mismo
@@ -58,18 +60,32 @@ const createUser = async (req, res) => {
       });
 
       // Configura el correo con el verificationToken
+     const verifyUrl = `${process.env.APP_FRONT_URL}/#/clients/account/verify/${userId}/${verificationToken}`;
+
+      // Ruta absoluta del archivo HTML
+      const emailPath = path.join(process.cwd(), 'services', 'verify-email.html');
+          
+      // Leer HTML
+      let htmlTemplate = fs.readFileSync(emailPath, 'utf8');
+          
+      // Reemplazar variables
+      htmlTemplate = htmlTemplate
+        .replace(/{{VERIFY_URL}}/g, verifyUrl)
+        .replace(/{{YEAR}}/g, new Date().getFullYear());
+          
+      // Configurar correo
       const mailBody = {
-        from: '"Ultrasystem" <noreply@ultrasystem.shop>',
+        from: '"Clickshopping" <noreply@clikshoping.shop>',
         to: req.body.email,
         subject: 'Verifica tu correo electrónico',
-        html: `
-          <p>Por favor verifica tu correo:</p>
-          <a href="${process.env.VITE_APP_FRONT_URL}/#/clients/account/verify/${userId}/${verificationToken}">
-            Haz clic aquí
-          </a>
-          <p>O copia esta URL en tu navegador:</p>
-          <p>${process.env.VITE_APP_FRONT_URL}/#/clients/account/verify/${userId}/${verificationToken}</p>
-        `,
+        html: htmlTemplate,
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: path.join(process.cwd(), 'services/logo.png'),
+            cid: 'logo@clickshopping'
+          }
+        ]
       };
 
       // Envía el correo y responde
