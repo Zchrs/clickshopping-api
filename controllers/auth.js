@@ -11,127 +11,99 @@ const { v4: uuidv4 } = require('uuid');
 
 // Crear usuarios
 const createUser = async (req, res) => {
-  const userId = uuidv4();
-  const verificationToken = crypto.randomBytes(32).toString('hex');
-  let connection;
+  // Genera ambos identificadores al inicio
+  const userId = uuidv4(); // ID único para el usuario
+  const verificationToken = crypto.randomBytes(32).toString('hex'); // Token para verificación
 
   try {
-    connection = await mysqls.createConnection({
+    const connection = await mysqls.createConnection({
       host: process.env.DB_HOST,
       user: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
     });
 
+    // Hashea la contraseña
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
-    const [result] = await connection.execute(
-      `INSERT INTO users (
-        id, country, name, lastname, phone,
-        email, role, password, verificationToken
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        userId,
-        req.body.country,
-        req.body.name,
-        req.body.lastname,
-        req.body.phone,
-        req.body.email,
-        req.body.role,
-        hashedPassword,
-        verificationToken
-      ]
-    );
+    // Verifica email y teléfono...
+    // Inserta el usuario con AMBOS identificadores
+const [result] = await connection.execute(
+  `INSERT INTO users (
+    id, country, name, lastname, phone,
+    email, role, password, verificationToken
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  [
+    userId,
+    req.body.country,
+    req.body.name,
+    req.body.lastname,
+    req.body.phone,
+    req.body.email,
+    req.body.role,
+    hashedPassword,
+    verificationToken
+  ]
+);
 
-    // ==========================
-    // 🔥 ENVÍO DE CORREO (CORREGIDO)
-    // ==========================
-    try {
-      console.log("📧 Preparando envío de email...");
-      
-      // Verificar variables de entorno
-      console.log("EMAIL_SERVER:", process.env.EMAIL_SERVER);
-      console.log("EMAIL_SENDER:", process.env.EMAIL_SENDER_TO_VERIFY);
-      
+    if (result.affectedRows > 0) {
+      // Configura el transporter aquí mismo
       const transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_SERVER, // ej: "smtp.gmail.com" o "smtp.hostinger.com"
-        port: parseInt(process.env.EMAIL_PORT) || 465, // ✅ Número, no string
-        secure: true, // true para 465, false para otros puertos
+        service: process.env.EMAIL_SENDER_TO_VERIFY,
+        host: process.env.EMAIL_SERVER,
+        port: process.env.EMAIL_SERVER_PORT,
+        secure: true,
         auth: {
           user: process.env.EMAIL_SENDER_TO_VERIFY,
           pass: process.env.EMAIL_PASSWORD,
         },
-        tls: {
-          rejectUnauthorized: false, // Para evitar errores con certificados autofirmados
-        },
-        debug: true, // Muestra información de depuración
       });
 
-      // Verificar conexión SMTP
-      await transporter.verify();
-      console.log("✅ Servidor SMTP conectado correctamente");
+      // Configura el correo con el verificationToken
+     const verifyUrl = `${process.env.APP_FRONT_URL}/#/clients/account/verify/${userId}/${verificationToken}`;
 
-      // Construir URL de verificación
-      const verifyUrl = `${process.env.APP_FRONT_URL}/#/clients/account/verify/${userId}`;
-      console.log("🔗 URL de verificación:", verifyUrl);
-
-      // Leer y procesar template HTML
+      // Ruta absoluta del archivo HTML
       const emailPath = path.join(process.cwd(), 'services', 'verify-email.html');
-      console.log("📄 Ruta del template:", emailPath);
-
-      let htmlTemplate = fs.readFileSync(emailPath, 'utf8')
+          
+      // Leer HTML
+      let htmlTemplate = fs.readFileSync(emailPath, 'utf8');
+          
+      // Reemplazar variables
+      htmlTemplate = htmlTemplate
         .replace(/{{VERIFY_URL}}/g, verifyUrl)
         .replace(/{{YEAR}}/g, new Date().getFullYear());
-
-      // Configurar email
-      const mailOptions = {
-        from: `"Clickshopping" <${process.env.EMAIL_SENDER_TO_VERIFY}>`,
+          
+      // Configurar correo
+      const mailBody = {
+        from: '"Clickshopping" <noreply@clikshoping.shop>',
         to: req.body.email,
-        subject: 'Verifica tu correo electrónico - Clickshopping',
+        subject: 'Verifica tu correo electrónico',
         html: htmlTemplate,
-        attachments: []
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: path.join(process.cwd(), 'services/logo.png'),
+            cid: 'logo@clickshopping'
+          }
+        ]
       };
 
-      // Verificar si existe el logo antes de adjuntar
-      const logoPath = path.join(process.cwd(), 'services', 'logo.png');
-      if (fs.existsSync(logoPath)) {
-        mailOptions.attachments.push({
-          filename: 'logo.png',
-          path: logoPath,
-          cid: 'logo@clickshopping'
-        });
-      }
-
-      // Enviar email
-      const info = await transporter.sendMail(mailOptions);
-      console.log("✅ Email enviado:", info.messageId);
-      console.log("📬 Vista previa:", nodemailer.getTestMessageUrl(info));
-
-    } catch (mailError) {
-      console.error("❌ Error detallado enviando email:", {
-        message: mailError.message,
-        code: mailError.code,
-        command: mailError.command,
-        response: mailError.response,
-        stack: mailError.stack
+      // Envía el correo y responde
+      await transporter.sendMail(mailBody);
+      
+      res.status(201).json({
+        id: userId,
+        message: 'Usuario registrado. Por favor verifica tu correo.',
       });
-      // El registro continúa aunque falle el email
     }
 
-    return res.status(201).json({
-      success: true,
-      id: userId,
-      message: 'Usuario registrado. Por favor verifica tu correo.',
-    });
-
+    await connection.end();
   } catch (error) {
-    console.error('❌ Error en createUser:', error);
-    return res.status(500).json({
-      success: false,
+    console.error('Error en createUser:', error);
+    res.status(500).json({ 
       error: "Error en el servidor",
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
-  } finally {
-    if (connection) await connection.end();
   }
 };
 
