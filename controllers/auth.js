@@ -43,43 +43,83 @@ const createUser = async (req, res) => {
       ]
     );
 
-    // 🔥 Envío de correo (AISLADO)
+    // ==========================
+    // 🔥 ENVÍO DE CORREO (CORREGIDO)
+    // ==========================
     try {
+      console.log("📧 Preparando envío de email...");
+      
+      // Verificar variables de entorno
+      console.log("EMAIL_SERVER:", process.env.EMAIL_SERVER);
+      console.log("EMAIL_SENDER:", process.env.EMAIL_SENDER_TO_VERIFY);
+      
       const transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_SERVER,
-        port: "465",
-        secure: true,
+        host: process.env.EMAIL_SERVER, // ej: "smtp.gmail.com" o "smtp.hostinger.com"
+        port: parseInt(process.env.EMAIL_PORT) || 465, // ✅ Número, no string
+        secure: true, // true para 465, false para otros puertos
         auth: {
           user: process.env.EMAIL_SENDER_TO_VERIFY,
           pass: process.env.EMAIL_PASSWORD,
         },
+        tls: {
+          rejectUnauthorized: false, // Para evitar errores con certificados autofirmados
+        },
+        debug: true, // Muestra información de depuración
       });
 
-      const verifyUrl = `${process.env.APP_FRONT_URL}/#/clients/account/verify/${userId}/${verificationToken}`;
+      // Verificar conexión SMTP
+      await transporter.verify();
+      console.log("✅ Servidor SMTP conectado correctamente");
+
+      // Construir URL de verificación
+      const verifyUrl = `${process.env.APP_FRONT_URL}/#/clients/account/verify/${userId}`;
+      console.log("🔗 URL de verificación:", verifyUrl);
+
+      // Leer y procesar template HTML
       const emailPath = path.join(process.cwd(), 'services', 'verify-email.html');
+      console.log("📄 Ruta del template:", emailPath);
 
       let htmlTemplate = fs.readFileSync(emailPath, 'utf8')
         .replace(/{{VERIFY_URL}}/g, verifyUrl)
         .replace(/{{YEAR}}/g, new Date().getFullYear());
 
-      await transporter.sendMail({
-        from: '"Clickshopping" <noreply@clikshoping.shop>',
+      // Configurar email
+      const mailOptions = {
+        from: `"Clickshopping" <${process.env.EMAIL_SENDER_TO_VERIFY}>`,
         to: req.body.email,
-        subject: 'Verifica tu correo electrónico',
+        subject: 'Verifica tu correo electrónico - Clickshopping',
         html: htmlTemplate,
-        attachments: [{
+        attachments: []
+      };
+
+      // Verificar si existe el logo antes de adjuntar
+      const logoPath = path.join(process.cwd(), 'services', 'logo.png');
+      if (fs.existsSync(logoPath)) {
+        mailOptions.attachments.push({
           filename: 'logo.png',
-          path: path.join(process.cwd(), 'services/logo.png'),
+          path: logoPath,
           cid: 'logo@clickshopping'
-        }]
-      });
+        });
+      }
+
+      // Enviar email
+      const info = await transporter.sendMail(mailOptions);
+      console.log("✅ Email enviado:", info.messageId);
+      console.log("📬 Vista previa:", nodemailer.getTestMessageUrl(info));
 
     } catch (mailError) {
-      console.error("❌ Error enviando email:", mailError);
-      // NO rompes el registro
+      console.error("❌ Error detallado enviando email:", {
+        message: mailError.message,
+        code: mailError.code,
+        command: mailError.command,
+        response: mailError.response,
+        stack: mailError.stack
+      });
+      // El registro continúa aunque falle el email
     }
 
     return res.status(201).json({
+      success: true,
       id: userId,
       message: 'Usuario registrado. Por favor verifica tu correo.',
     });
@@ -87,6 +127,7 @@ const createUser = async (req, res) => {
   } catch (error) {
     console.error('❌ Error en createUser:', error);
     return res.status(500).json({
+      success: false,
       error: "Error en el servidor",
     });
   } finally {
