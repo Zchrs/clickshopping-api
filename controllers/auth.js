@@ -99,20 +99,12 @@ const createUser = async (req, res) => {
   }
 };
 
-// ==========================
-// FUNCIÓN SEPARADA PARA ENVIAR EMAIL
-// ==========================
 async function sendVerificationEmail(email, userId, verificationToken) {
-  // Validar configuración de email
-  if (!process.env.EMAIL_SERVER || !process.env.EMAIL_SENDER_TO_VERIFY) {
-    console.error('❌ Configuración de email incompleta');
-    return false;
-  }
 
   try {
     const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVER,
-      port: parseInt(process.env.EMAIL_SERVER_PORT) || 465,
+      host: 'smtp.hostinger.com',
+      port: 465,
       secure: true,
       auth: {
         user: process.env.EMAIL_SENDER_TO_VERIFY,
