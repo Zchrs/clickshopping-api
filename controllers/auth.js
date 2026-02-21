@@ -154,9 +154,9 @@ async function sendVerificationEmail(email, userId, verificationToken) {
     // Solo adjuntar logo si existe
     if (fs.existsSync(logoPath)) {
       mailOptions.attachments = [{
-        filename: 'logo.png',
+        filename: 'logo-blanco.png',
         path: logoPath,
-        cid: 'logo@clickshopping'
+        cid: 'logo-blanco@clickshopping'
       }];
     }
 

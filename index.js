@@ -150,6 +150,7 @@ app.use("/api/likes", require("./routes/likes"));
 app.use("/api/codes/registration/admin", require("./routes/regCodeAdmin"));
 app.use("/api/accounts/recovery", require("./routes/recovery"));
 app.use("/api/comments", require("./routes/comments"));
+app.use("/api/traffic", require("./routes/traffic"));
 
 // ==========================
 // STATIC + SPA
