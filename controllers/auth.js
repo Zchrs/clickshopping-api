@@ -108,8 +108,8 @@ async function sendVerificationEmail(email, userId, verificationToken) {
 
   try {
     const transporter = nodemailer.createTransport({
-      host: "smtp.hostinger.com",
-      port: 465,
+      host: process.env.EMAIL_SERVER,
+      port: parseInt(process.env.EMAIL_SERVER_PORT) || 465,
       secure: true,
       auth: {
         user: process.env.EMAIL_SENDER_TO_VERIFY,
