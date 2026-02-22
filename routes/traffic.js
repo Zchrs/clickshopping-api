@@ -3,6 +3,7 @@ const { pool } = require("../database/config"); // ← cambio importante aquí
 const createVisitorKey = require("../utils/visitorKey");
 const {detectBrowser} = require("../utils/detectBrowser");
 const {detectDevice} = require("../utils/detectDevice");
+const {detectOS} = require("../utils/detectSo");
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.post("/visits/track", async (req, res) => {
 
   const browser = detectBrowser(userAgent);
   const device = detectDevice(userAgent);
+  const os = detectOS(userAgent);
 
   try {
     const [exists] = await pool.query(
@@ -37,13 +39,13 @@ router.post("/visits/track", async (req, res) => {
     );
 
     if (exists.length === 0) {
-      await pool.query(
-        `
-        INSERT INTO traffic (visitor_key, pathname, ip, browser, device, visited_at)
-        VALUES (?, ?, ?, ?, ?, NOW())
-        `,
-        [visitorKey, pathname, ip, browser, device]
-      );
+await pool.query(
+  `
+  INSERT INTO traffic (visitor_key, pathname, ip, browser, device, os, visited_at)
+  VALUES (?, ?, ?, ?, ?, ?, NOW())
+  `,
+  [visitorKey, pathname, ip, browser, device, os]
+);
     }
 
     res.json({ success: true });
@@ -66,6 +68,13 @@ router.get("/visits/stats", async (req, res) => {
       [pathname]
     );
 
+const [byDeviceOs] = await pool.query(`
+  SELECT device, os, COUNT(*) AS count
+  FROM traffic
+  GROUP BY device, os
+  ORDER BY count DESC
+`);
+
     const [byBrowser] = await pool.query(`
       SELECT browser, COUNT(*) as count
       FROM traffic
@@ -73,17 +82,11 @@ router.get("/visits/stats", async (req, res) => {
       ORDER BY count DESC
     `);
 
-    const [byDevice] = await pool.query(`
-      SELECT device, COUNT(*) as count
-      FROM traffic
-      GROUP BY device
-    `);
-
     res.json({
       totalVisits,
       pageVisits,
+      byDeviceOs,
       browsers: byBrowser,
-      devices: byDevice,
     });
   } catch (err) {
     console.error("Error stats:", err);
