@@ -8,7 +8,7 @@ const {detectOS} = require("../utils/detectSo");
 const router = Router();
 
 
-router.post("/visits/track", async (req, res) => {
+router.post("/visitor/track", async (req, res) => {
   const pathname = req.body?.pathname;
 
   if (!pathname) {
@@ -57,7 +57,7 @@ await pool.query(
   console.log("BODY:", req.body);
 });
 
-router.get("/visits/stats", async (req, res) => {
+router.get("/visitor/stats", async (req, res) => {
   try {
     const { pathname } = req.query;
 
