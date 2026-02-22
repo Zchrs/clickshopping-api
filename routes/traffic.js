@@ -53,6 +53,8 @@ await pool.query(
     console.error("Error al registrar visita:", err);
     res.status(500).json({ error: "Error al registrar visita" });
   }
+    console.log("HEADERS:", req.headers);
+  console.log("BODY:", req.body);
 });
 
 router.get("/visits/stats", async (req, res) => {
