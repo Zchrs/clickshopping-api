@@ -9,10 +9,16 @@ const router = Router();
 
 
 router.post("/visitor/track", async (req, res) => {
-  const pathname = req.body?.pathname;
+  console.log("HEADERS:", req.headers);
+  console.log("BODY:", req.body);
+
+  const pathname = req.body && req.body.pathname;
 
   if (!pathname) {
-    return res.status(400).json({ error: "pathname requerido" });
+    return res.status(400).json({
+      error: "pathname requerido",
+      body: req.body,
+    });
   }
 
   const ip =
@@ -39,22 +45,24 @@ router.post("/visitor/track", async (req, res) => {
     );
 
     if (exists.length === 0) {
-await pool.query(
-  `
-  INSERT INTO traffic (visitor_key, pathname, ip, browser, device, os, visited_at)
-  VALUES (?, ?, ?, ?, ?, ?, NOW())
-  `,
-  [visitorKey, pathname, ip, browser, device, os]
-);
+      await pool.query(
+        `
+        INSERT INTO traffic 
+        (visitor_key, pathname, ip, browser, device, os, visited_at)
+        VALUES (?, ?, ?, ?, ?, ?, NOW())
+        `,
+        [visitorKey, pathname, ip, browser, device, os]
+      );
     }
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (err) {
-    console.error("Error al registrar visita:", err);
-    res.status(500).json({ error: "Error al registrar visita" });
+    console.error("DB ERROR:", err);
+    return res.status(500).json({
+      error: "Error al registrar visita",
+      message: err.message,
+    });
   }
-    console.log("HEADERS:", req.headers);
-  console.log("BODY:", req.body);
 });
 
 router.get("/visitor/stats", async (req, res) => {
