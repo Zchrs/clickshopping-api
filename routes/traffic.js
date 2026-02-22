@@ -9,7 +9,7 @@ const router = Router();
 
 
 router.post("/visits/track", async (req, res) => {
-  const { pathname } = req.body;
+  const pathname = req.body?.pathname;
 
   if (!pathname) {
     return res.status(400).json({ error: "pathname requerido" });
