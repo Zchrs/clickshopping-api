@@ -56,10 +56,10 @@ app.get("/api/products/stream", async (req, res) => {
 
   sseClients.push(res);
 
-  // ⏱ HEARTBEAT (cada 20s)
+  // ⏱ HEARTBEAT (cada 3s)
   const heartbeat = setInterval(() => {
     res.write(": heartbeat\n\n");
-  }, 20000);
+  }, 3000);
 
   // 📦 Envío inicial
   try {
