@@ -59,7 +59,7 @@ app.get("/api/products/stream", async (req, res) => {
   // ⏱ HEARTBEAT (cada 3s)
   const heartbeat = setInterval(() => {
     res.write(": heartbeat\n\n");
-  }, 3000);
+  }, 1000);
 
   // 📦 Envío inicial
   try {
@@ -88,6 +88,49 @@ app.get("/api/products/stream", async (req, res) => {
     console.log("🔴 Cliente SSE desconectado");
   });
 });
+
+// ==========================
+// 🔥 SSE ORDERS (ADMIN)
+// ==========================
+let sseOrderClients = [];
+
+app.get("/api/orders/stream", (req, res) => {
+  res.set({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+
+  res.flushHeaders();
+  console.log("🟢 Admin conectado a SSE Orders");
+
+  sseOrderClients.push(res);
+
+  const heartbeat = setInterval(() => {
+    res.write(": heartbeat\n\n");
+  }, 1000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    sseOrderClients = sseOrderClients.filter(c => c !== res);
+    console.log("🔴 Admin desconectado SSE Orders");
+  });
+});
+
+// ==========================
+// 🔔 NOTIFY ORDER UPDATE
+// ==========================
+function notifyOrderUpdate(orderData) {
+  if (sseOrderClients.length === 0) return;
+
+  sseOrderClients.forEach(res => {
+    res.write(
+      `event: order-proof\ndata: ${JSON.stringify(orderData)}\n\n`
+    );
+  });
+
+  console.log(`📡 SSE ORDER broadcast → ${sseOrderClients.length} admins`);
+}
 
 // ==========================
 // 🔔 NOTIFY PRODUCTS UPDATE
@@ -131,6 +174,15 @@ app.use(
   require("./routes/products")
 );
 
+app.use(
+  "/api/orders",
+  (req, res, next) => {
+    res.notifyOrderUpdate = notifyOrderUpdate;
+    next();
+  },
+  require("./routes/orders")
+);
+
 // ==========================
 // OTRAS RUTAS
 // ==========================
@@ -142,7 +194,6 @@ app.use("/api/invitation", require("./routes/invitations"));
 app.use("/api/newsletter", require("./routes/newsletter"));
 app.use("/api/uploads", require("./routes/images"));
 app.use("/api/images", require("./routes/images"));
-app.use("/api/cart", require("./routes/cart"));
 app.use("/api/wishlist", require("./routes/wishlist"));
 app.use("/api/ratings", require("./routes/ratings"));
 app.use("/api/products/issues", require("./routes/IssueReports"));

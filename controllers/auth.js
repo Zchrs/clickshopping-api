@@ -205,8 +205,10 @@ const verifyUser = async (req, res) => {
 };
 
 const loginUser = async (req, res) => {
+  let connection;
+
   try {
-    const connection = await mysqls.createConnection({
+    connection = await mysqls.createConnection({
       host: process.env.DB_HOST,
       user: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
@@ -214,69 +216,87 @@ const loginUser = async (req, res) => {
     });
 
     const { email, password } = req.body;
-    const findUserQuery = "SELECT * FROM users WHERE email = ?";
-    const [results] = await connection.query(findUserQuery, [email]);
+
+    if (!email || !password) {
+      return res.status(400).json({
+        ok: false,
+        msg: "Email y contraseña son obligatorios",
+      });
+    }
+
+    const [results] = await connection.query(
+      "SELECT * FROM users WHERE email = ? LIMIT 1",
+      [email]
+    );
 
     if (results.length === 0) {
-      console.log("Usuario y/o contraseña incorrecto.");
-      return res.status(400).json({ error: "Usuario y/o contraseña incorrecta." });
+      return res.status(400).json({
+        ok: false,
+        msg: "Usuario y/o contraseña incorrecta",
+      });
     }
 
     const user = results[0];
 
-    if (user.password !== password) {
-      console.log("Contraseña incorrecta.");
-      return res.status(400).json({ error: "Contraseña incorrecta." });
+    /* ===============================
+       VALIDAR PASSWORD (bcrypt)
+    =============================== */
+    const validPassword = await bcrypt.compare(password, user.password);
+
+    if (!validPassword) {
+      return res.status(400).json({
+        ok: false,
+        msg: "Usuario y/o contraseña incorrecta",
+      });
     }
 
-    const role = 'user';
-    const generateJwt = (id, name, lastname, email, role) => {
-      const payload = { id, email, name, lastname, role };
-      const secretKey = process.env.SECRET_JWT_SEED;
-      const options = { expiresIn: '2h' };
-      return jwt.sign(payload, secretKey, options);
+    /* ===============================
+       GENERAR JWT
+    =============================== */
+    const payload = {
+      id: user.id,
+      name: user.name,
+      lastname: user.lastname,
+      email: user.email,
+      role: user.role || "user",
     };
 
-    const { id, name, lastname, city, phone, address, zip_code } = user;
-    const token = generateJwt(id, name, lastname, email, role);
+    const token = jwt.sign(payload, process.env.SECRET_JWT_SEED, {
+      expiresIn: "2h",
+    });
 
-    res.json({
+    return res.json({
       ok: true,
       msg: "Login successful",
       user: {
-        id,
-        name,
-        lastname,
-        city,
-        phone,
-        email,
-        address,
-        zip_code,
-        role,
+        id: user.id,
+        name: user.name,
+        lastname: user.lastname,
+        city: user.city,
+        phone: user.phone,
+        email: user.email,
+        address: user.address,
+        zip_code: user.zip_code,
+        role: payload.role,
         token,
       },
     });
 
-    console.log(`Inicio de sesión exitoso.
-      ID: ${id}
-      Nombre: ${name}
-      Apellido: ${lastname}
-      Ciudad: ${city}
-      Teléfono: ${phone}
-      Dirección: ${address}
-      Email: ${email}
-      Rol: ${role}
-      Token: ${token}
-    `);
-
-    await connection.end();
   } catch (error) {
-    console.log(error);
-    res.status(500).json({
+    console.error("❌ LOGIN ERROR:", error);
+
+    return res.status(500).json({
       ok: false,
       msg: "Please contact the administrator",
     });
+
+  } finally {
+    if (connection) await connection.end();
   }
+};
+
+module.exports = {
+  loginUser,
 };
 
 const renewToken = async (req, res) => {
