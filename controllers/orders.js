@@ -105,10 +105,12 @@ const approveOrder = async (req, res) => {
 );
 
     // ✅ 6. Insertar en pendientes de envío
- await connection.execute(
+await connection.execute(
   `INSERT INTO pending_send_orders 
    (order_id, user_id, total, status, created_at, updated_at)
-   VALUES (?, ?, ?, ?, NOW(), NOW())`,
+   VALUES (?, ?, ?, ?, NOW(), NOW())
+   ON DUPLICATE KEY UPDATE 
+   updated_at = NOW()`,
   [order.id, order.user_id, order.total, 'pending send']
 );
 
@@ -121,13 +123,6 @@ const approveOrder = async (req, res) => {
 
   } catch (error) {
     await connection.rollback();
-
-    // 🔥 Si es error de duplicado por UNIQUE constraint
-    if (error.code === "ER_DUP_ENTRY") {
-      return res.status(400).json({
-        error: "La orden ya fue procesada anteriormente",
-      });
-    }
 
     console.error("APPROVE ORDER ERROR:", error);
     return res.status(500).json({
@@ -180,7 +175,7 @@ const authorizeOrderSend = async (req, res) => {
            updated_at = NOW()
        WHERE id = ? 
        AND status = 'pending send'`,
-      ["order sent", "order sent", orderId]
+      ["approved", "order sent", orderId]
     );
 
     if (updateResult.affectedRows === 0) {

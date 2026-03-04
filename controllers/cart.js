@@ -289,7 +289,7 @@ const payCart = async (req, res) => {
     let orderId = getRandomRef();
 
     const [orderResult] = await connection.execute(
-      "INSERT INTO orders (order_id, user_id, total, status) VALUES (?, ?, ?, 'pending')",
+      "INSERT INTO orders (order_id, user_id, total, status) VALUES (?, ?, ?, 'pending aproval')",
       [orderId, user_id, total]
     );
 
