@@ -25,7 +25,7 @@ const sendCode = async (req, res) => {
     )
 
     await transporter.sendMail({
-      from: "support@gavicinmobiliaria.com",
+      from: "support@gclikshoping.shop",
       to: email,
       subject: "Código de recuperación",
       text: `Tu código de recuperación es: ${code}`,

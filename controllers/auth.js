@@ -295,10 +295,6 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = {
-  loginUser,
-};
-
 const renewToken = async (req, res) => {
   const role = "user";
   const { id } = req;
