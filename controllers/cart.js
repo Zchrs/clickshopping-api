@@ -6,34 +6,38 @@ const util = require('util');
 
 // Función para agregar un producto al carrito
 const addToCart = async (req, res) => {
-  const { user_id, product_id, price, quantity } = req.body;
+  const { user_id, guest_id, product_id, price, quantity } = req.body;
+
   const connection = await pool.getConnection();
 
   try {
     const qty = Number(quantity);
     const unitPrice = Number(price);
 
-    if (!user_id || !product_id || !unitPrice || !qty || qty <= 0) {
+    // Validaciones básicas
+    if (!product_id || !unitPrice || !qty || qty <= 0) {
       return res.status(400).json({ error: "Datos inválidos" });
+    }
+
+    // Validación ESTRICTA: XOR (uno y solo uno debe estar presente)
+    const hasUserId = user_id !== undefined && user_id !== null && user_id !== '';
+    const hasGuestId = guest_id !== undefined && guest_id !== null && guest_id !== '';
+
+    // Debe tener exactamente uno de los dos
+    if ((hasUserId && hasGuestId) || (!hasUserId && !hasGuestId)) {
+      return res.status(400).json({ 
+        error: "Debe proporcionar SOLO user_id (para usuarios registrados) O SOLO guest_id (para invitados)" 
+      });
     }
 
     await connection.beginTransaction();
 
-    // 🔍 Usuario
-    const [user] = await connection.execute(
-      "SELECT id FROM users WHERE id = ?",
-      [user_id]
-    );
-    if (!user.length) {
-      await connection.rollback();
-      return res.status(404).json({ error: "Usuario no encontrado" });
-    }
-
-    // 🔍 Producto + lock
+    // Verificar producto
     const [product] = await connection.execute(
       "SELECT id, quantity FROM products WHERE id = ? FOR UPDATE",
       [product_id]
     );
+
     if (!product.length) {
       await connection.rollback();
       return res.status(404).json({ error: "Producto no encontrado" });
@@ -44,32 +48,62 @@ const addToCart = async (req, res) => {
       return res.status(400).json({ error: "Stock insuficiente" });
     }
 
-    // 🛒 Insertar o sumar cantidad
-    await connection.execute(
-      `INSERT INTO user_cart (user_id, product_id, price, quantity)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)`,
-      [user_id, product_id, unitPrice, qty]
-    );
+    // Preparar valores - solo uno tendrá valor, el otro será NULL
+    const insertUserId = hasUserId ? user_id : null;
+    const insertGuestId = hasGuestId ? guest_id : null;
 
-    // ➖ Descontar stock
+    // Verificar si ya existe el producto en el carrito del usuario/invitado
+    let existingQuery = "";
+    let existingValues = [];
+
+    if (hasUserId) {
+      existingQuery = "SELECT id, quantity FROM user_cart WHERE user_id = ? AND product_id = ?";
+      existingValues = [user_id, product_id];
+    } else {
+      existingQuery = "SELECT id, quantity FROM user_cart WHERE guest_id = ? AND product_id = ?";
+      existingValues = [guest_id, product_id];
+    }
+
+    const [existing] = await connection.execute(existingQuery, existingValues);
+
+    if (existing.length > 0) {
+      // Actualizar cantidad existente
+      await connection.execute(
+        "UPDATE user_cart SET quantity = quantity + ?, total = total + ? WHERE id = ?",
+        [qty, unitPrice * qty, existing[0].id]
+      );
+    } else {
+      // Insertar nuevo registro
+      await connection.execute(
+        `INSERT INTO user_cart (user_id, guest_id, product_id, price, quantity, total) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [insertUserId, insertGuestId, product_id, unitPrice, qty, unitPrice * qty]
+      );
+    }
+
+    // Actualizar stock
     await connection.execute(
       "UPDATE products SET quantity = quantity - ? WHERE id = ?",
       [qty, product_id]
     );
 
     await connection.commit();
-    res.status(201).json({ ok: true, message: "Producto agregado al carrito" });
+
+    res.status(201).json({
+      ok: true,
+      message: "Producto agregado al carrito",
+    });
 
   } catch (error) {
     await connection.rollback();
     console.error("ADD TO CART ERROR:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+    res.status(500).json({
+      error: "Error interno del servidor",
+    });
   } finally {
     connection.release();
   }
 };
-
 // Función para obtener todos los productos del carrito
 const getCartProducts = async (req, res) => {
   const { user_id } = req.params;
@@ -247,83 +281,150 @@ const removeFromCart = async (req, res) => {
 };
 
 const payCart = async (req, res) => {
-  const { user_id, product_ids } = req.body;
+
   const connection = await pool.getConnection();
 
   try {
-    if (!user_id || !Array.isArray(product_ids) || !product_ids.length) {
-      return res.status(400).json({ error: "Datos inválidos" });
-    }
 
     await connection.beginTransaction();
 
-    const [cartItems] = await connection.execute(
-      `SELECT c.product_id, c.quantity, c.price, p.quantity AS stock
-       FROM user_cart c
-       JOIN products p ON p.id = c.product_id
-       WHERE c.user_id = ? AND c.product_id IN (${product_ids.map(() => "?").join(",")})
-       FOR UPDATE`,
-      [user_id, ...product_ids]
-    );
+    const { user_id, guest_id, products } = req.body;
 
-    if (!cartItems.length) {
-      await connection.rollback();
-      return res.status(404).json({ error: "No hay productos válidos para pagar" });
+    if (!products || !products.length) {
+      return res.status(400).json({ error: "No hay productos para pagar" });
     }
 
-    for (const item of cartItems) {
-      if (item.stock < item.quantity) {
+    const isGuest = !!guest_id;
+
+    const ids = products.map(p => p.product_id);
+
+    // Obtener productos + imagen
+    const [dbProducts] = await connection.query(
+      `SELECT 
+        p.id,
+        p.price,
+        p.quantity,
+        pi.img_url
+      FROM products p
+      LEFT JOIN products_img pi 
+        ON pi.product_id = p.id
+      WHERE p.id IN (${ids.map(() => "?").join(",")})
+      GROUP BY p.id
+      FOR UPDATE`,
+      ids
+    );
+
+    if (!dbProducts.length) {
+      await connection.rollback();
+      return res.status(400).json({ error: "Productos no encontrados" });
+    }
+
+    // Map rápido de productos
+    const productMap = {};
+    dbProducts.forEach(p => {
+      productMap[p.id] = p;
+    });
+
+    let total = 0;
+
+    // Validar stock
+    for (const item of products) {
+
+      const product = productMap[item.product_id];
+
+      if (!product) {
         await connection.rollback();
         return res.status(400).json({
-          error: `Stock insuficiente para producto ${item.product_id}`,
+          error: `Producto ${item.product_id} no existe`
         });
       }
+
+      if (product.quantity < item.quantity) {
+        await connection.rollback();
+        return res.status(400).json({
+          error: `Stock insuficiente para producto ${item.product_id}`
+        });
+      }
+
+      total += product.price * item.quantity;
+
     }
 
-    const total = cartItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
+    // Crear orden
+    const [order] = await connection.execute(
+      `INSERT INTO orders
+      (user_id, guest_id, total, status)
+      VALUES (?, ?, ?, ?)`,
+      [
+        isGuest ? null : user_id,
+        isGuest ? guest_id : null,
+        total,
+        "pending aproval"
+      ]
     );
 
-    // 🟡 Crear orden pendiente
-    let orderId = getRandomRef();
+    const orderId = order.insertId;
 
-    const [orderResult] = await connection.execute(
-      "INSERT INTO orders (order_id, user_id, total, status) VALUES (?, ?, ?, 'pending aproval')",
-      [orderId, user_id, total]
-    );
+    // Insertar items y actualizar stock
+    for (const item of products) {
 
-     orderId = orderResult.insertId;
+      const product = productMap[item.product_id];
 
-    // 📦 Crear items
-    for (const item of cartItems) {
       await connection.execute(
-        "INSERT INTO order_items (order_id, product_id, price, quantity) VALUES (?, ?, ?, ?)",
-        [orderId, item.product_id, item.price, item.quantity]
+        `INSERT INTO order_items
+        (order_id, product_id, quantity, price)
+        VALUES (?, ?, ?, ?)`,
+        [
+          orderId,
+          item.product_id,
+          item.quantity,
+          product.price,
+        ]
+      );
+
+      await connection.execute(
+        `UPDATE products
+         SET quantity = quantity - ?
+         WHERE id = ?`,
+        [
+          item.quantity,
+          item.product_id
+        ]
+      );
+
+    }
+
+    // limpiar carrito si es usuario
+    if (!isGuest) {
+      await connection.execute(
+        `DELETE FROM user_cart WHERE user_id = ?`,
+        [user_id]
       );
     }
 
-    // 🧹 Limpiar carrito
-    await connection.execute(
-      `DELETE FROM user_cart
-       WHERE user_id = ? AND product_id IN (${product_ids.map(() => "?").join(",")})`,
-      [user_id, ...product_ids]
-    );
-
     await connection.commit();
-    res.status(201).json({
-      ok: true,
-      message: "Pedido creado y pendiente de aprobación",
-      orderId,
+
+    res.json({
+      success: true,
+      order_id: orderId
     });
 
-  } catch (error) {
+  } catch (err) {
+
     await connection.rollback();
-    console.error("PAY CART ERROR:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+
+    console.error("Error al procesar pago:", err);
+
+    res.status(500).json({
+      error: "Error procesando el pago"
+    });
+
   } finally {
+
     connection.release();
+
   }
+
 };
 
 // Función para quitar un producto del carrito y agregarki a lista de deseos

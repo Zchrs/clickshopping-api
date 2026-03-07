@@ -276,7 +276,7 @@ const loginUser = async (req, res) => {
         phone: user.phone,
         email: user.email,
         address: user.address,
-        zip_code: user.zip_code,
+        zipCode: user.zip_code,
         role: payload.role,
         token,
       },

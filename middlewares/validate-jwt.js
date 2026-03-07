@@ -104,9 +104,9 @@ const validateJwtSeller = ( req, res, next )=>{
   }
 
   try {
-      const { id, email, fullname, role = 'Seller' } = jwt.verify(
+      const { id, email, fullname, role = 'seller' } = jwt.verify(
           token,
-          process.env.SECRET_JWT_SEED_ADM,
+          process.env.SECRET_JWT_SEED_SELLER,
       )
       req.id = id;
       req.email = email;

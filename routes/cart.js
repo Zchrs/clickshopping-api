@@ -14,7 +14,7 @@ const router = Router();
 
 router.get('/get-User-cart/:user_id', getCartProducts);
 
-router.post('/add/:product_id', addToCart);
+router.post('/add', addToCart);
 
 // mover del carrito a lista de deseos
 router.post('/move-to-wishlist/:product_id', moveToWishlist);
