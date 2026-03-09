@@ -284,121 +284,111 @@ const payCart = async (req, res) => {
 
   const connection = await pool.getConnection();
 
+  const safe = (v) => (v === undefined ? null : v);
+
   try {
 
     await connection.beginTransaction();
 
-    const { user_id, guest_id, products } = req.body;
+    const {
+      user_id,
+      guest_id,
+      products = [],
+      guest_info = {},
+      is_guest = false,
+      paymentMethod
+    } = req.body;
 
-    if (!products || !products.length) {
-      return res.status(400).json({ error: "No hay productos para pagar" });
+    if (!products.length) {
+      throw new Error("Carrito vacío");
     }
 
-    const isGuest = !!guest_id;
+    let finalUserId = user_id ?? null;
 
-    const ids = products.map(p => p.product_id);
+    /* =========================
+       1. CREAR INVITADO
+    ==========================*/
 
-    // Obtener productos + imagen
+    if (is_guest && guest_id) {
+
+      await connection.execute(
+        `INSERT INTO users
+        (id, name, lastname, email, address, state, city, zip_code, role, isVerified)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE id=id`,
+        [
+          safe(guest_id),
+          safe(guest_info.name),
+          safe(guest_info.lastname),
+          safe(guest_info.email),
+          safe(guest_info.address),
+          safe(guest_info.state),
+          safe(guest_info.city),
+          safe(guest_info.zipCode),
+          "guest",
+          1
+        ]
+      );
+
+      finalUserId = guest_id;
+    }
+
+    /* =========================
+       2. CREAR GRUPO DE ORDEN
+    ==========================*/
+
+    const orderGroupId = Date.now();
+
+    /* =========================
+       3. OBTENER IDS DE PRODUCTOS
+    ==========================*/
+
+    const productIds = products.map(p => p.id || p.product_id);
+
     const [dbProducts] = await connection.query(
-      `SELECT 
-        p.id,
-        p.price,
-        p.quantity,
-        pi.img_url
-      FROM products p
-      LEFT JOIN products_img pi 
-        ON pi.product_id = p.id
-      WHERE p.id IN (${ids.map(() => "?").join(",")})
-      GROUP BY p.id
-      FOR UPDATE`,
-      ids
+      `SELECT id, price FROM products WHERE id IN (?)`,
+      [productIds]
     );
 
     if (!dbProducts.length) {
-      await connection.rollback();
-      return res.status(400).json({ error: "Productos no encontrados" });
+      throw new Error("Productos no encontrados");
     }
 
-    // Map rápido de productos
     const productMap = {};
+
     dbProducts.forEach(p => {
-      productMap[p.id] = p;
+      productMap[p.id] = p.price;
     });
 
-    let total = 0;
+    /* =========================
+       4. INSERTAR ITEMS
+    ==========================*/
 
-    // Validar stock
-    for (const item of products) {
+    for (const product of products) {
 
-      const product = productMap[item.product_id];
+      const productId = product.id || product.product_id;
+      const quantity = product.quantity || 1;
 
-      if (!product) {
-        await connection.rollback();
-        return res.status(400).json({
-          error: `Producto ${item.product_id} no existe`
-        });
+      const price = productMap[productId];
+
+      if (!price) {
+        throw new Error(`Producto inválido: ${productId}`);
       }
 
-      if (product.quantity < item.quantity) {
-        await connection.rollback();
-        return res.status(400).json({
-          error: `Stock insuficiente para producto ${item.product_id}`
-        });
-      }
-
-      total += product.price * item.quantity;
-
-    }
-
-    // Crear orden
-    const [order] = await connection.execute(
-      `INSERT INTO orders
-      (user_id, guest_id, total, status)
-      VALUES (?, ?, ?, ?)`,
-      [
-        isGuest ? null : user_id,
-        isGuest ? guest_id : null,
-        total,
-        "pending aproval"
-      ]
-    );
-
-    const orderId = order.insertId;
-
-    // Insertar items y actualizar stock
-    for (const item of products) {
-
-      const product = productMap[item.product_id];
-
       await connection.execute(
-        `INSERT INTO order_items
-        (order_id, product_id, quantity, price)
-        VALUES (?, ?, ?, ?)`,
+        `INSERT INTO orders
+        (order_id, product_id, user_id, guest_id, price, quantity, status, payment_method)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          orderId,
-          item.product_id,
-          item.quantity,
-          product.price,
+          orderGroupId,
+          productId,
+          is_guest ? null : finalUserId,
+          is_guest ? guest_id : null,
+          price,
+          quantity,
+          "pending approval",
+          paymentMethod || "unknown"
         ]
-      );
-
-      await connection.execute(
-        `UPDATE products
-         SET quantity = quantity - ?
-         WHERE id = ?`,
-        [
-          item.quantity,
-          item.product_id
-        ]
-      );
-
-    }
-
-    // limpiar carrito si es usuario
-    if (!isGuest) {
-      await connection.execute(
-        `DELETE FROM user_cart WHERE user_id = ?`,
-        [user_id]
       );
     }
 
@@ -406,17 +396,19 @@ const payCart = async (req, res) => {
 
     res.json({
       success: true,
-      order_id: orderId
+      order_id: orderGroupId,
+      message: "Orden creada correctamente"
     });
 
-  } catch (err) {
+  } catch (error) {
 
     await connection.rollback();
 
-    console.error("Error al procesar pago:", err);
+    console.error("PAY CART ERROR:", error);
 
     res.status(500).json({
-      error: "Error procesando el pago"
+      success: false,
+      message: error.message
     });
 
   } finally {
