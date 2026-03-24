@@ -7,15 +7,21 @@ const mysqls = require("mysql2/promise");
 const { Router } = require("express");
 const { check } = require("express-validator");
 const { validateFields } = require("../middlewares/validate-form-data");
-const { createUser, renewToken, loginUser, verifyUser, verifyEmail, getVerificationToken } = require("../controllers/auth");
+const { createUser, 
+  renewToken, 
+  loginUser, 
+  verifyUser, 
+  verifyEmail, 
+  getVerificationToken, 
+  setGuestPassword, 
+  createGuestPassword, 
+  getUsersGuest 
+} = require("../controllers/auth");
 const { validateJwt } = require("../middlewares/validate-jwt");
-const { isUUID } = require('validator');
-const { connectionDB } = require("../database/config");
 
 const router = Router();
 
-router.post(
-  "/register",
+router.post("/register",
   [
     check("name", "Name is required").not().isEmpty(),
     check("lastname", "Last name is required").not().isEmpty(),
@@ -29,8 +35,7 @@ router.post(
   createUser
 );
 
-router.post(
-  "/login",
+router.post("/login",
   [
     check("email", "Email is required").isEmail(),
     check("password", "Password is required").not().isEmpty(),
@@ -40,59 +45,7 @@ router.post(
   loginUser
 );
 
-router.post('/account/verify/email/:token', async (req, res) => {
-  let connection;
-  try {
-    const { token } = req.params;
-    
-    connection = await mysqls.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-    });
-
-    const [users] = await connection.execute(
-      'SELECT * FROM users WHERE verificationToken = ?',
-      [token]
-    );
-
-    if (users.length === 0) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Token inválido o expirado' 
-      });
-    }
-
-    const user = users[0];
-
-    if (user.isVerified) {
-      return res.json({ 
-        success: true,
-        message: 'El correo ya está verificado' 
-      });
-    }
-
-    await connection.execute(
-      'UPDATE users SET isVerified = true, verificationToken = NULL WHERE id = ?',
-      [user.id]
-    );
-
-    res.json({ 
-      success: true,
-      message: 'Correo verificado exitosamente' 
-    });
-
-  } catch (error) {
-    console.error('❌ Error en verify-email:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Error al verificar el correo' 
-    });
-  } finally {
-    if (connection) await connection.end();
-  }
-});
+router.post('/account/verify/email/:token', verifyEmail);
 
 
 router.get('/account/email/verify-status/:token', async (req, res) => {
@@ -137,7 +90,7 @@ router.get('/account/email/verify-status/:token', async (req, res) => {
   }
 });
 
-router.get('/get-verification-token/:userId', async (req, res) => {
+router.get('/account/get-verification-token/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
     console.log('🔍 get-verification-token - userId:', userId);
@@ -185,7 +138,27 @@ router.get('/get-verification-token/:userId', async (req, res) => {
   }
 });
 
-router.get('/verify/:token', verifyUser);
+router.get('/account/verify/email/:token', verifyUser);
+
+router.post("/account/guest/set-password", setGuestPassword);
+router.post("/account/guest/create-password", createGuestPassword);
+
+router.get("/users/guests", async (req, res) => {
+  try {
+    const users = await getUsersGuest();
+
+    res.json({
+      success: true,
+      users
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error obteniendo usuarios guest"
+    });
+  }
+});
 
 router.get("/renew", validateJwt , renewToken);
 

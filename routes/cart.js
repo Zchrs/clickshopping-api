@@ -8,6 +8,7 @@ const {
   moveToWishlist,
   payCart,
 } = require("../controllers/cart");
+const { validateJwt } = require("../middlewares/validate-jwt");
 
 
 const router = Router();
@@ -20,7 +21,7 @@ router.post('/add', addToCart);
 router.post('/move-to-wishlist/:product_id', moveToWishlist);
 
 // eliminar un producto del carrito
-router.delete('/delete-product-cart/:product_id', removeFromCart);
+router.delete('/delete-product-cart', validateJwt, removeFromCart);
 
 // actualizar la cantidad de un producto en el carrito
 router.put('/update/:productId', updateCartProduct);

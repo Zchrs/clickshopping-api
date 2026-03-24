@@ -1,5 +1,5 @@
 const multer = require('multer');
-const mysqls = require("mysql2");
+const mysqls = require("mysql2/promise");
 const path = require('path');
 const fs = require('fs');
 // const busboy = require('busboy');

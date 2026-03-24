@@ -4,7 +4,7 @@ const path = require("path");
 const jwt = require('jsonwebtoken'); // Importación faltante
 const { validateJwt } = require("../middlewares/validate-jwt");
 const { v4: uuidv4 } = require("uuid");
-const { pool } = require("../database/config");
+const pool = require("../database/config");
 
 const createIssue = async (req, res) => {
   try {

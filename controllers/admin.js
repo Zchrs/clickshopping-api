@@ -1,14 +1,8 @@
 const jwt = require('jsonwebtoken');
-const mysql = require("mysql2/promise");
+const pool = require("../database/config");
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
 
-
-const v4options = {
-  random: [
-    0x10, 0x91, 0x56, 0xbe, 0xc4, 0xfb, 0xc1, 0xea, 0x71, 0xb4, 0xef, 0xe1, 0x67, 0x1c, 0x58
-  ],
-};
 
 const createAdmin = async (req, res) => {
   try {
@@ -85,101 +79,103 @@ const createAdmin = async (req, res) => {
 };
 
 const loginUserAdmin = async (req, res) => {
-    const { email, pass } = req.body;
-    const findAdminQuery = "SELECT * FROM admins WHERE email = ?";
-    const findAdminValues = [email];
 
-    try {
-        const connection = await mysql.createConnection({
-            host: process.env.DB_HOST,
-            user: process.env.DB_USERNAME,
-            password: process.env.DB_PASSWORD,
-            database: process.env.DB_NAME,
-        });
+  const { email, password } = req.body;
 
-        const [results] = await connection.query(findAdminQuery, findAdminValues);
+  try {
 
-        if (results.length === 0) {
-            await connection.end();
-            return res.status(400).json({ error: "Usuario y/o contraseña incorrecta." });
-        }
+    const [results] = await pool.query(
+      "SELECT * FROM users WHERE email = ? AND role = 'admin' LIMIT 1",
+      [email]
+    );
 
-        const admin = results[0];
-
-        if (admin.pass !== pass) {
-            await connection.end();
-            return res.status(400).json({ error: "Contraseña incorrecta." });
-        }
-
-        const generateJwtAdm = (id, fullname, email, role) => {
-            const payload = { id, email, fullname, role };
-            const secretKey = process.env.SECRET_JWT_SEED_ADM;
-            const options = { expiresIn: '2h' };
-            return jwt.sign(payload, secretKey, options);
-        };
-
-        const { id, fullname } = admin;
-        const role = 'admin';
-        const token = generateJwtAdm(id, fullname, email, role);
-
-        await connection.end();
-
-        res.json({
-            ok: true,
-            msg: "Login successful",
-            admin: {
-                id: admin.id,
-                fullname: admin.fullname,
-                email: admin.email,
-                role,
-                token,
-            },
-        });
-
-        console.log(`Inicio de sesión exitoso para: ${fullname} (${email})`);
-
-    } catch (error) {
-        console.error("Error en loginUserAdmin:", error);
-        res.status(500).json({
-            ok: false,
-            msg: "Please contact the administrator",
-        });
+    if (results.length === 0) {
+      return res.status(400).json({
+        ok:false,
+        error:"Usuario o contraseña incorrecta"
+      });
     }
+
+    const admin = results[0];
+
+    const validPassword = await bcrypt.compare(password, admin.password);
+
+    if (!validPassword) {
+      return res.status(400).json({
+        ok:false,
+        error:"Usuario o contraseña incorrecta"
+      });
+    }
+
+    const payload = {
+      id: admin.id,
+      name: admin.name,
+      lastname: admin.lastname,
+      email: admin.email,
+      role: admin.role
+    };
+
+    const token = jwt.sign(
+      payload,
+      process.env.SECRET_JWT_SEED_ADM,
+      { expiresIn: "2h" }
+    );
+
+    res.json({
+      ok:true,
+      admin:{
+        id: admin.id,
+        name: admin.name,
+        lastname: admin.lastname,
+        email: admin.email,
+        role: admin.role,
+        token
+      }
+    });
+
+    console.log(`Inicio de sesión exitoso: ${admin.name} ${admin.lastname}`);
+
+  } catch (error) {
+
+    console.error("Error en loginUserAdmin:", error);
+
+    res.status(500).json({
+      ok:false,
+      msg:"Error en el servidor"
+    });
+
+  }
+
 };
 
 const renewTokenAdmin = async (req, res) => {
-    const role = 'admin';
-    const admin = req;
-    const { id, fullname, email } = admin;
-    // console.log(id, name, email, 'require desde renew');
-    const generateJwtAdm = (id, fullname, email, role) => {
-      const payload = {
-        id: admin.id,
-        fullname: admin.fullname,
-        email: admin.email,
-        role
-      };
-      const secretKey = process.env.SECRET_JWT_SEED_ADM;
-      const options = {
-        expiresIn: '2h' 
-      };
-      const token = jwt.sign(payload, secretKey, options);
-      return token;
-    };
-  
-  
-    
-    const token = generateJwtAdm( id, fullname, email, role );
-  
-    res.json({
-      ok: true,
-      id: admin.id,
-      fullname: admin.fullname,
-      email: admin.email,
-      role,
-      token,
-     
-    });
+
+  const { id, name, lastname, email, role } = req.user;
+
+  const payload = {
+    id,
+    name,
+    lastname,
+    email,
+    role
+  };
+
+  const token = jwt.sign(
+    payload,
+    process.env.SECRET_JWT_SEED_ADM,
+    { expiresIn: "2h" }
+  );
+
+  res.json({
+    ok:true,
+    id,
+    name,
+    lastname,
+    email,
+    role,
+    token
+  });
+
 };
   
   

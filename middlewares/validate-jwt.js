@@ -32,37 +32,51 @@ const validateJwt = ( req, res, next )=>{
     next();
 }
 
-const validateJwtAdmin = ( req, res, next )=>{
-  const token = req.header('x-token');
- 
-  if ( !token ) {
-      return res.status(401).json({
-          ok: false,
-          msg: 'No hay token de admin'
-      });
+
+const validateJwtAdmin = (req, res, next) => {
+  const token = req.header("x-token");
+
+  if (!token) {
+    return res.status(401).json({
+      ok: false,
+      msg: "No hay token en la petición (x-token)",
+    });
   }
 
   try {
-      const { id, email, fullname, role = 'admin' } = jwt.verify(
-          token,
-          process.env.SECRET_JWT_SEED_ADM,
-      )
-      req.id = id;
-      req.email = email;
-      req.fullname = fullname;
-      req.role = role;
+    const decoded = jwt.verify(token, process.env.SECRET_JWT_SEED_ADM);
+
+    console.log(">>> [JWT ADMIN] Token decodificado correctamente:", {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+      full: decoded,
+    });
+
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      name: decoded.name,
+      lastname: decoded.lastname,
+      role: decoded.role || "admin", // fallback si no viene role
+    };
+
+    console.log(">>> [JWT ADMIN] req.user asignado:", req.user);
+
+    next();
   } catch (error) {
-      return res.status(401).json({
-          ok: false,
-          msg: 'Token de admin no válido'
-      });
+    console.error(">>> [JWT ADMIN] Error al verificar token:", error.message);
+
+    return res.status(401).json({
+      ok: false,
+      msg: "Token de administrador no válido o expirado",
+      error: error.message, // solo en desarrollo
+    });
   }
-
-  next();
-}
+};
 
 
-const validateJwtAdviror = ( req, res, next )=>{
+const validateJwtAdvisor = ( req, res, next )=>{
   const token = req.header('x-token');
  
   if ( !token ) {
@@ -104,13 +118,14 @@ const validateJwtSeller = ( req, res, next )=>{
   }
 
   try {
-      const { id, email, fullname, role = 'seller' } = jwt.verify(
+      const { id, email, name, lastname, role = 'seller' } = jwt.verify(
           token,
           process.env.SECRET_JWT_SEED_SELLER,
       )
       req.id = id;
       req.email = email;
-      req.fullname = fullname;
+      req.name = name;
+      req.lastname = lastname;
       req.role = role;
   } catch (error) {
       return res.status(401).json({
@@ -126,6 +141,6 @@ const validateJwtSeller = ( req, res, next )=>{
 module.exports = {
     validateJwt,
     validateJwtAdmin,
-    validateJwtAdviror,
+    validateJwtAdvisor,
     validateJwtSeller
 };

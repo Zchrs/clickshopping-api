@@ -1,5 +1,5 @@
 const { Router } = require("express");
-const { pool } = require("../database/config"); // ← cambio importante aquí
+const pool = require("../database/config"); // ← cambio importante aquí
 const createVisitorKey = require("../utils/visitorKey");
 const {detectBrowser} = require("../utils/detectBrowser");
 const {detectDevice} = require("../utils/detectDevice");

@@ -2,7 +2,7 @@ let propertyRefArr = [];
 
 // Inicializar array de referencias
 for (let i = 100; i <= 10000; i++) {
-  propertyRefArr.push(i <= 1000 ? `ULSM#${i}` : `US#${i}`);
+  propertyRefArr.push(i <= 1000 ? `CLSP#${i}` : `CS#${i}`);
 }
 
 // Función para obtener referencia aleatoria única

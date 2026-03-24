@@ -1,4 +1,3 @@
-const mysql = require("mysql");
 const mysqls = require("mysql2/promise");
 
 const pool = mysqls.createPool({
@@ -11,4 +10,4 @@ const pool = mysqls.createPool({
   queueLimit: 0
 });
 
-module.exports = { pool };
+module.exports = pool ;

@@ -1,4 +1,4 @@
-const { pool } = require("../database/config");
+const pool = require("../database/config");
 
 const createComment = async (req, res) => {
   const { user_id, product_id, comment } = req.body;

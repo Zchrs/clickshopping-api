@@ -13,7 +13,7 @@ dotenv.config({
 
 const app = express();
 const server = http.createServer(app);
-const { pool } = require("./database/config");
+const pool = require("./database/config");
 
 // ==========================
 // CORS
@@ -28,7 +28,7 @@ app.use(
             "https://admin.clikshoping.shop",
             "https://www.admin.clikshoping.shop",
           ]
-        : ["http://localhost:5173"],
+        : ["http://localhost:5173", "http://192.168.1.55:5173" ],
     credentials: true,
   })
 );
@@ -45,6 +45,7 @@ let sseClients = [];
  * SSE ENDPOINT
  */
 app.get("/api/products/stream", async (req, res) => {
+
   res.set({
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
@@ -52,42 +53,96 @@ app.get("/api/products/stream", async (req, res) => {
   });
 
   res.flushHeaders();
-  console.log("🟢 Cliente SSE conectado");
 
-  sseClients.push(res);
-
-  // ⏱ HEARTBEAT (cada 3s)
   const heartbeat = setInterval(() => {
     res.write(": heartbeat\n\n");
-  }, 1000);
+  }, 15000);
 
-  // 📦 Envío inicial
   try {
+
+    // Primero obtener los productos
     const [products] = await pool.execute(`
-      SELECT p.*, GROUP_CONCAT(pi.img_url) as images
+      SELECT 
+        p.id,
+        p.name,
+        p.description,
+        p.price,
+        p.previous_price AS previousPrice,
+        p.brand,
+        p.status,
+        c.name AS category,
+        COALESCE(i.stock - i.reserved, 0) AS stock,
+        (
+          SELECT ROUND(AVG(rating), 1)
+          FROM product_ratings
+          WHERE product_id = p.id
+        ) AS rating
       FROM products p
-      LEFT JOIN products_img pi ON p.id = pi.product_id
-      GROUP BY p.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN inventory i ON i.product_id = p.id
+      WHERE p.status IN ('active','spent','sold')
       ORDER BY p.created_at DESC
+      LIMIT 100
     `);
 
-    const formatted = products.map(p => ({
-      ...p,
-      images: p.images ? p.images.split(",") : [],
-    }));
+    // Para cada producto, obtener imágenes y variantes por separado
+    const productsWithDetails = await Promise.all(
+      products.map(async (product) => {
+        try {
+          // Obtener imágenes
+          const [images] = await pool.execute(
+            "SELECT img_url FROM products_img WHERE product_id = ?",
+            [product.id]
+          );
 
-    res.write(`event: products\ndata: ${JSON.stringify(formatted)}\n\n`);
+          // Obtener variantes
+          const [variants] = await pool.execute(
+            "SELECT id AS variant_id, sku, price, stock FROM product_variants WHERE product_id = ?",
+            [product.id]
+          );
+
+          return {
+            ...product,
+            images: images.map(img => img.img_url),
+            variants: variants
+          };
+        } catch (err) {
+          console.error(`Error obteniendo detalles para producto ${product.id}:`, err);
+          return {
+            ...product,
+            images: [],
+            variants: []
+          };
+        }
+      })
+    );
+
+    res.write(`event: products\ndata: ${JSON.stringify(productsWithDetails)}\n\n`);
+
   } catch (err) {
-    console.error("❌ SSE initial error:", err.message);
+    console.error("SSE error:", err);
+    res.write(`event: error\ndata: ${JSON.stringify({ message: "Error cargando productos" })}\n\n`);
   }
 
-  // ❌ Cliente desconectado
   req.on("close", () => {
     clearInterval(heartbeat);
-    sseClients = sseClients.filter(c => c !== res);
-    console.log("🔴 Cliente SSE desconectado");
   });
+
 });
+// Función para actualizar un producto específico
+function updateProduct(productId, productData) {
+  if (!global.sseClients || global.sseClients.size === 0) return;
+  
+  const event = `event: product-update\ndata: ${JSON.stringify({ id: productId, ...productData })}\n\n`;
+  
+  global.sseClients.forEach((client, id) => {
+    try {
+      client.write(event);
+    } catch (err) {
+      global.sseClients.delete(id);
+    }
+  });
+}
 
 // ==========================
 // 🔥 SSE ORDERS (ADMIN)
@@ -165,8 +220,7 @@ async function notifyProductsUpdate() {
 // ==========================
 // 🔌 API PRODUCTS (HOOK SSE)
 // ==========================
-app.use(
-  "/api/products",
+app.use("/api/products",
   (req, res, next) => {
     res.notifyProductsUpdate = notifyProductsUpdate;
     next();
@@ -174,8 +228,7 @@ app.use(
   require("./routes/products")
 );
 
-app.use(
-  "/api/orders",
+app.use("/api/orders",
   (req, res, next) => {
     res.notifyOrderUpdate = notifyOrderUpdate;
     next();

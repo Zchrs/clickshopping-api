@@ -100,7 +100,7 @@
 
 // router.delete('/delete/:id', deleteProduct);
 // module.exports = router;
-
+const { validateJwtAdmin } = require('../middlewares/validate-jwt');
 const { Router } = require("express");
 const {
   createProduct,
@@ -109,7 +109,6 @@ const {
   updateProduct,
   deleteProduct,
   getSoldProducts,
-  sellProduct
 } = require("../controllers/products");
 
 const { check } = require("express-validator");
@@ -150,25 +149,40 @@ const upload = multer({
 // ==========================
 
 // ➕ CREAR PRODUCTO
-router.post(
-  "/new-product",
+router.post( '/new-product',
   [
-    check("name").notEmpty(),
-    check("price").notEmpty(),
-    check("previousPrice").notEmpty(),
-    check("category").notEmpty(),
-    check("quantity").notEmpty(),
-    check("description").notEmpty(),
+    // Middleware de autenticación PRIMERO (imprescindible)
+    validateJwtAdmin,  // ← Esto asigna req.user si el token es válido
+
+    // Validaciones de campos
+    check('name', 'El nombre es obligatorio').not().isEmpty().trim(),
+    check('price', 'El precio es obligatorio y debe ser numérico').not().isEmpty().isNumeric(),
+    check('previousPrice', 'El precio anterior debe ser numérico').optional().isNumeric(),
+    check('category', 'La categoría es obligatoria').not().isEmpty().trim(),
+    check('quantity', 'La cantidad/stock es obligatoria').not().isEmpty().isInt({ min: 0 }),
+    check('description', 'La descripción es obligatoria').not().isEmpty().trim(),
+
+    // Middleware de validación de campos (errores de express-validator)
     validateFields,
   ],
   async (req, res) => {
     try {
-      const product = await createProduct(req, res);
-      await res.notifyProductsUpdate(); // 🔥 SSE
-      res.json(product);
+      // Aquí req.user YA debería estar definido gracias al middleware
+      console.log('Usuario autenticado en ruta:', req.user);
+
+      const result = await createProduct(req);
+
+      // Notificación SSE (si usas eventos en tiempo real)
+      await res.notifyProductsUpdate?.(); // opcional, con ? para evitar error si no existe
+
+      res.status(201).json(result);
     } catch (err) {
-      console.error("❌ createProduct:", err.message);
-      res.status(500).json({ error: "Error creating product" });
+      console.error('❌ Error en ruta /new-product:', err.message);
+      
+      const status = err.message.includes('permisos') ? 403 : 500;
+      const message = err.message || 'Error al crear el producto';
+
+      res.status(status).json({ ok: false, msg: message });
     }
   }
 );

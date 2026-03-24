@@ -1,37 +1,6 @@
 const mysqls = require("mysql");
 const mysql = require('mysql2/promise');
 
-// const addRating = async (req, res) => {
-//   const { product_id, user_id, rating } = req.body;
-  
-//   // Verifica los datos recibidos
-//   console.log('Datos recibidos:', { product_id, user_id, rating });
-
-//   if (product_id === undefined || user_id === undefined || rating === undefined) {
-//     return res.status(400).json({ error: 'Faltan parámetros requeridos' });
-//   }
-
-//   const connection = await mysql.createConnection({
-//     host: process.env.DB_HOST,
-//     user: process.env.DB_USERNAME,
-//     password: process.env.DB_PASSWORD,
-//     database: process.env.DB_NAME,
-//   });
-
-//   try {
-//     const insertRatingQuery = `
-//       INSERT INTO ratings (product_id, user_id, rating) VALUES (?, ?, ?)
-//     `;
-//     const [results] = await connection.execute(insertRatingQuery, [product_id, user_id, rating]);
-
-//     return res.status(201).json({ message: 'Calificación agregada exitosamente', results });
-//   } catch (error) {
-//     console.error('Error al agregar calificación:', error);
-//     return res.status(500).json({ error: 'Error interno del servidor' });
-//   } finally {
-//     await connection.end();
-//   }
-// };
 
 const addRating = async (req, res) => {
   const { product_id, user_id, rating } = req.body;
