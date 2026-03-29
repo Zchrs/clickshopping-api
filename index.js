@@ -44,8 +44,8 @@ let sseClients = [];
 /**
  * SSE ENDPOINT
  */
-app.get("/api/products/stream", async (req, res) => {
 
+app.get("/api/products/stream", async (req, res) => {
   res.set({
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
@@ -59,8 +59,7 @@ app.get("/api/products/stream", async (req, res) => {
   }, 15000);
 
   try {
-
-    // Primero obtener los productos
+    // Consulta ajustada para tu estructura donde parent_id almacena nombres
     const [products] = await pool.execute(`
       SELECT 
         p.id,
@@ -70,7 +69,18 @@ app.get("/api/products/stream", async (req, res) => {
         p.previous_price AS previousPrice,
         p.brand,
         p.status,
+        c.id AS category_id,
         c.name AS category,
+        c.parent_id AS category_parent_id,
+        -- Asignar mainCategory y subCategory según la jerarquía
+        CASE 
+          WHEN c.parent_id IS NOT NULL THEN c.parent_id  -- Si tiene padre, ese es el mainCategory
+          ELSE NULL 
+        END AS mainCategory,
+        CASE 
+          WHEN c.parent_id IS NOT NULL THEN c.name  -- Si tiene padre, este es subCategory
+          ELSE NULL 
+        END AS subCategory,
         COALESCE(i.stock - i.reserved, 0) AS stock,
         (
           SELECT ROUND(AVG(rating), 1)
@@ -85,17 +95,15 @@ app.get("/api/products/stream", async (req, res) => {
       LIMIT 100
     `);
 
-    // Para cada producto, obtener imágenes y variantes por separado
+    // Para cada producto, obtener imágenes y variantes
     const productsWithDetails = await Promise.all(
       products.map(async (product) => {
         try {
-          // Obtener imágenes
           const [images] = await pool.execute(
             "SELECT img_url FROM products_img WHERE product_id = ?",
             [product.id]
           );
 
-          // Obtener variantes
           const [variants] = await pool.execute(
             "SELECT id AS variant_id, sku, price, stock FROM product_variants WHERE product_id = ?",
             [product.id]
@@ -127,8 +135,8 @@ app.get("/api/products/stream", async (req, res) => {
   req.on("close", () => {
     clearInterval(heartbeat);
   });
-
 });
+
 // Función para actualizar un producto específico
 function updateProduct(productId, productData) {
   if (!global.sseClients || global.sseClients.size === 0) return;

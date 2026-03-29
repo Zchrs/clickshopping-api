@@ -221,8 +221,7 @@ router.get("/category", async (req, res) => {
 router.get("/images/:product_id", getImagesByProductId);
 
 // ✏️ ACTUALIZAR PRODUCTO
-router.put(
-  "/update/:id",
+router.put("/update/:id",
   upload.array("img_url", 6),
   async (req, res) => {
     try {

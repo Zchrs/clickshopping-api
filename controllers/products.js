@@ -8,8 +8,10 @@ const fs = require("fs");
 const path = require("path");
 
 
+/* ============================================
+   CREAR PRODUCTO
+============================================ */
 const createProduct = async (req) => {
-
   const user = req.user;
 
   const isAdmin = user?.role === "admin";
@@ -25,20 +27,18 @@ const createProduct = async (req) => {
     description,
     price,
     previousPrice,
-    category, // ahora enviamos el nombre
+    category,
+    subCategory,
     brand,
     stock,
     img_url,
-    color,
-    variants = []
+    variants = [] // [{ name: "rojo", price, stock }]
   } = req.body;
 
   name = name?.trim();
-  description = description || null;
   price = Number(price);
   previousPrice = previousPrice ? Number(previousPrice) : null;
   stock = Number(stock) || 0;
-  brand = brand || null;
   img_url = Array.isArray(img_url) ? img_url : [];
 
   if (!name) throw new Error("Nombre obligatorio");
@@ -47,38 +47,42 @@ const createProduct = async (req) => {
   const connection = await pool.getConnection();
 
   try {
-
     await connection.beginTransaction();
 
     /* =========================
-       CREAR / OBTENER CATEGORIA
+       CATEGORÍAS
     ========================= */
 
     let categoryId = null;
 
     if (category) {
-
       if (isAdmin) {
+        // crear categoría padre
+        const mainCategoryId = await createCategory(connection, category, null);
 
-        categoryId = await createCategory(connection, category);
-
+        // crear subcategoría si existe
+        if (subCategory) {
+          categoryId = await createCategory(
+            connection,
+            subCategory,
+            mainCategoryId
+          );
+        } else {
+          categoryId = mainCategoryId;
+        }
       } else {
-
         const [cat] = await connection.execute(
           `SELECT id FROM categories WHERE name = ? LIMIT 1`,
           [category]
         );
 
-        if (cat.length === 0) {
-          throw new Error("La categoría no existe");
-        }
-
+        if (!cat.length) throw new Error("Categoría no existe");
         categoryId = cat[0].id;
       }
     }
 
     /* =========================
-       EVITAR DUPLICADOS
+       DUPLICADOS
     ========================= */
 
     const [exists] = await connection.execute(
@@ -86,30 +90,19 @@ const createProduct = async (req) => {
       [name]
     );
 
-    if (exists.length > 0) {
-      throw new Error("El producto ya existe");
-    }
+    if (exists.length) throw new Error("Producto ya existe");
 
     /* =========================
        SELLER
     ========================= */
 
-    let sellerId = null;
-
-    if (isSeller) {
-      sellerId = user.id;
-    }
-
-    // si es admin, puede asignar sellerId
-    if (isAdmin) {
-      sellerId = req.body.sellerId || user.id;
-    }
+    let sellerId = isSeller ? user.id : req.body.sellerId || user.id;
 
     /* =========================
        CREAR PRODUCTO
     ========================= */
-    
-    const [product] = await connection.execute(
+
+    await connection.execute(
       `INSERT INTO products
       (id, name, description, price, previous_price, category_id, seller_id, brand, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
@@ -121,82 +114,71 @@ const createProduct = async (req) => {
         previousPrice,
         categoryId,
         sellerId,
-        brand
+        brand,
       ]
     );
 
-    
-
     /* =========================
-       IMAGENES
+       IMÁGENES
     ========================= */
 
-    if (img_url.length > 0) {
-
-      const images = img_url.map(img => [
-
+    if (img_url.length) {
+      const images = img_url.map((img) => [
         prodId,
         img.public_id || null,
-        typeof img === "string" ? img : img.url
-
+        typeof img === "string" ? img : img.url,
       ]);
 
       await connection.query(
-        `INSERT INTO products_img
-        (product_id, file_id, img_url)
-        VALUES ?`,
+        `INSERT INTO products_img (product_id, file_id, img_url) VALUES ?`,
         [images]
       );
     }
 
     /* =========================
-       INVENTARIO
+       INVENTARIO BASE
     ========================= */
 
     await connection.execute(
-      `INSERT INTO inventory
-      (product_id, stock, reserved)
-      VALUES (?, ?, 0)`,
+      `INSERT INTO inventory (product_id, stock, reserved)
+       VALUES (?, ?, 0)`,
       [prodId, stock]
     );
 
     /* =========================
-       VARIANTE SIMPLE
+       ATRIBUTO COLOR (SI NO EXISTE)
+    ========================= */
+
+    const colorAttrId = await getOrCreateAttribute(connection, "color");
+
+    /* =========================
+       VARIANTES (COLORES)
     ========================= */
 
     const createdVariants = [];
 
-    if (color) {
+    // si no vienen variantes → crear 1 por defecto
+    if (!variants.length) {
+      variants = [
+        {
+          name: "default",
+          price,
+          stock,
+        },
+      ];
+    }
 
+    for (const v of variants) {
       const variant = await createVariant(
         connection,
         prodId,
-        color,
-        price,
-        stock
+        v.name,
+        v.price || price,
+        v.stock || stock,
+        colorAttrId
       );
 
       createdVariants.push(variant);
-    }
-
-    /* =========================
-       VARIANTES MULTIPLES
-    ========================= */
-
-    if (variants.length > 0) {
-
-      for (const v of variants) {
-
-        const variant = await createVariant(
-          connection,
-          prodId,
-          v.name,
-          v.price || price,
-          v.stock || 0
-        );
-
-        createdVariants.push(variant);
-      }
     }
 
     await connection.commit();
@@ -205,19 +187,13 @@ const createProduct = async (req) => {
       ok: true,
       prodId,
       variants: createdVariants,
-      message: "Producto creado correctamente"
     };
-
   } catch (error) {
-
     await connection.rollback();
     console.error("❌ createProduct:", error);
     throw error;
-
   } finally {
-
     connection.release();
-
   }
 };
 /* ============================================
@@ -226,59 +202,110 @@ const createProduct = async (req) => {
 const createVariant = async (
   connection,
   productId,
-  variantName,
+  colorName,
   price,
-  stock
+  stock,
+  attributeId
 ) => {
-
   const sku = `SKU-${productId}-${Date.now()}`;
 
+  // 1. crear variante
   const [variant] = await connection.execute(
-    `INSERT INTO product_variants
-    (product_id, sku, price, stock)
-    VALUES (?, ?, ?, ?)`,
+    `INSERT INTO product_variants (product_id, sku, price, stock)
+     VALUES (?, ?, ?, ?)`,
     [productId, sku, price, stock]
   );
 
   const variantId = variant.insertId;
 
+  // 2. crear o obtener valor del atributo (color)
+  const valueId = await getOrCreateAttributeValue(
+    connection,
+    attributeId,
+    colorName
+  );
+
+  // 3. relacionar variante con atributo
+  await connection.execute(
+    `INSERT INTO variant_attributes (variant_id, attribute_value_id)
+     VALUES (?, ?)`,
+    [variantId, valueId]
+  );
+
   return {
     variantId,
     sku,
-    name: variantName,
+    color: colorName,
     price,
-    stock
+    stock,
   };
 };
 
+const getOrCreateAttribute = async (connection, name) => {
+  const [exists] = await connection.execute(
+    `SELECT id FROM attributes WHERE name = ? LIMIT 1`,
+    [name]
+  );
+
+  if (exists.length) return exists[0].id;
+
+  const [result] = await connection.execute(
+    `INSERT INTO attributes (name, created_at)
+     VALUES (?, NOW())`,
+    [name]
+  );
+
+  return result.insertId;
+};
+
+const getOrCreateAttributeValue = async (
+  connection,
+  attributeId,
+  value
+) => {
+  const [exists] = await connection.execute(
+    `SELECT id FROM attribute_values
+     WHERE attribute_id = ? AND value = ? LIMIT 1`,
+    [attributeId, value]
+  );
+
+  if (exists.length) return exists[0].id;
+
+  const [result] = await connection.execute(
+    `INSERT INTO attribute_values (attribute_id, value)
+     VALUES (?, ?)`,
+    [attributeId, value]
+  );
+
+  return result.insertId;
+};
 /* ============================================
    FUNCIÓN PARA CREAR CATEGORÍA (solo admin)
 ============================================ */
-const createCategory = async (connection, name, parent_id = null) => {
-
+const createCategory = async (connection, name, parentId = null) => {
   const slug = name
     .toLowerCase()
     .replace(/\s+/g, "-")
     .replace(/[^\w-]+/g, "");
 
   const [exists] = await connection.execute(
-    `SELECT id FROM categories WHERE slug = ? LIMIT 1`,
-    [slug]
+    `SELECT id FROM categories 
+     WHERE slug = ? AND parent_id <=> ? LIMIT 1`,
+    [slug, parentId]
   );
 
-  if (exists.length > 0) {
-    return exists[0].id;
-  }
+  if (exists.length) return exists[0].id;
 
   const [result] = await connection.execute(
-    `INSERT INTO categories
-    (name, slug, parent_id, created_at)
-    VALUES (?, ?, ?, NOW())`,
-    [name, slug, parent_id]
+    `INSERT INTO categories (name, slug, parent_id, created_at)
+     VALUES (?, ?, ?, NOW())`,
+    [name, slug, parentId]
   );
 
   return result.insertId;
 };
+
+
 /* ============================================
    FUNCIÓN PARA OBTENER CATEGORÍAS
 ============================================ */
@@ -383,8 +410,17 @@ const getProductsByCategory = async (category) => {
 
   try {
     const [products] = await connection.execute(
-      "SELECT * FROM products WHERE category = ?",
-      [category]
+      `
+      SELECT 
+        p.*,
+        c.name AS category,
+        sc.name AS subCategory
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN categories sc ON c.parent_id = sc.id
+      WHERE c.name = ? OR sc.name = ?
+      `,
+      [category, category]
     );
 
     if (products.length === 0) return [];
@@ -392,7 +428,8 @@ const getProductsByCategory = async (category) => {
     const ids = products.map(p => p.id);
 
     const [ratings] = await connection.query(
-      `SELECT * FROM ratings WHERE product_id IN (${ids.map(() => "?").join(",")})`,
+      `SELECT * FROM ratings 
+       WHERE product_id IN (${ids.map(() => "?").join(",")})`,
       ids
     );
 
@@ -400,6 +437,10 @@ const getProductsByCategory = async (category) => {
       ...product,
       ratings: ratings.filter(r => r.product_id === product.id),
     }));
+
+  } catch (error) {
+    console.error("❌ getProductsByCategory:", error);
+    throw error;
   } finally {
     connection.release();
   }
@@ -456,67 +497,111 @@ const deleteProduct = async (req, res) => {
     await connection.beginTransaction();
 
     /* ===============================
-       Verificar producto
+       VALIDAR PRODUCTO
     =============================== */
     const [product] = await connection.execute(
       "SELECT id FROM products WHERE id = ?",
       [id]
     );
 
-    if (product.length === 0) {
+    if (!product.length) {
       await connection.rollback();
-      return res.status(404).json({ error: "Producto no existe" });
+      return res.status(404).json({
+        ok: false,
+        error: "Producto no existe",
+      });
     }
 
     /* ===============================
-       Obtener imágenes
+       IMÁGENES (CLOUDINARY)
     =============================== */
     const [images] = await connection.execute(
       "SELECT file_id FROM products_img WHERE product_id = ?",
       [id]
     );
 
-    /* ===============================
-       Borrar Cloudinary SOLO prod
-    =============================== */
     if (isProduction && images.length > 0) {
       const publicIds = images
-        .map(img => img.file_id)
-        .filter(id => id && !id.startsWith("/"));
+        .map((img) => img.file_id)
+        .filter((fid) => fid && !fid.startsWith("/"));
 
-      if (publicIds.length > 0) {
+      if (publicIds.length) {
         await cloudinary.api.delete_resources(publicIds);
       }
     }
 
     /* ===============================
-       Borrar relaciones
+       VARIANTES
+    =============================== */
+    const [variants] = await connection.execute(
+      "SELECT id FROM product_variants WHERE product_id = ?",
+      [id]
+    );
+
+    const variantIds = variants.map((v) => v.id);
+
+    if (variantIds.length > 0) {
+      // eliminar relaciones de atributos
+      await connection.query(
+        `DELETE FROM variant_attributes WHERE variant_id IN (?)`,
+        [variantIds]
+      );
+
+      // eliminar variantes
+      await connection.query(
+        `DELETE FROM product_variants WHERE id IN (?)`,
+        [variantIds]
+      );
+    }
+
+    /* ===============================
+       IMÁGENES DB
     =============================== */
     await connection.execute(
       "DELETE FROM products_img WHERE product_id = ?",
       [id]
     );
 
+    /* ===============================
+       INVENTARIO
+    =============================== */
     await connection.execute(
-      "DELETE FROM product_colors WHERE product_id = ?",
+      "DELETE FROM inventory WHERE product_id = ?",
       [id]
     );
 
     /* ===============================
-       Borrar producto
+       PRODUCTO
     =============================== */
     await connection.execute(
       "DELETE FROM products WHERE id = ?",
       [id]
     );
 
+    /* ===============================
+       COMMIT
+    =============================== */
     await connection.commit();
-    return res.json({ ok: true, message: "Producto eliminado correctamente" });
+
+    return res.status(200).json({
+      ok: true,
+      message: "Producto eliminado correctamente",
+    });
 
   } catch (error) {
     await connection.rollback();
-    console.error("❌ DELETE PRODUCT ERROR:", error.message);
-    return res.status(500).json({ error: "Error al eliminar producto" });
+
+    console.error("❌ deleteProduct:", error);
+
+    // 🔥 evita doble response
+    if (!res.headersSent) {
+      return res.status(500).json({
+        ok: false,
+        error: "Error al eliminar producto",
+        detail: error.message,
+      });
+    }
+
   } finally {
     connection.release();
   }
