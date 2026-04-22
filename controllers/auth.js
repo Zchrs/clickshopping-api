@@ -850,5 +850,5 @@ module.exports = {
   setGuestPassword,
   createGuestPassword,
   getUsersGuest, 
-  renewToken
+  renewToken,
 };

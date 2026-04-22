@@ -59,7 +59,6 @@ app.get("/api/products/stream", async (req, res) => {
   }, 15000);
 
   try {
-    // Consulta ajustada para tu estructura donde parent_id almacena nombres
     const [products] = await pool.execute(`
       SELECT 
         p.id,
@@ -72,13 +71,12 @@ app.get("/api/products/stream", async (req, res) => {
         c.id AS category_id,
         c.name AS category,
         c.parent_id AS category_parent_id,
-        -- Asignar mainCategory y subCategory según la jerarquía
         CASE 
-          WHEN c.parent_id IS NOT NULL THEN c.parent_id  -- Si tiene padre, ese es el mainCategory
+          WHEN c.parent_id IS NOT NULL THEN c.parent_id
           ELSE NULL 
         END AS mainCategory,
         CASE 
-          WHEN c.parent_id IS NOT NULL THEN c.name  -- Si tiene padre, este es subCategory
+          WHEN c.parent_id IS NOT NULL THEN c.name
           ELSE NULL 
         END AS subCategory,
         COALESCE(i.stock - i.reserved, 0) AS stock,
@@ -95,31 +93,70 @@ app.get("/api/products/stream", async (req, res) => {
       LIMIT 100
     `);
 
-    // Para cada producto, obtener imágenes y variantes
     const productsWithDetails = await Promise.all(
       products.map(async (product) => {
         try {
+          // 📸 IMÁGENES
           const [images] = await pool.execute(
             "SELECT img_url FROM products_img WHERE product_id = ?",
             [product.id]
           );
 
-          const [variants] = await pool.execute(
-            "SELECT id AS variant_id, sku, price, stock FROM product_variants WHERE product_id = ?",
-            [product.id]
-          );
+          // 🎨 VARIANTES + COLORES
+          const [variantsRaw] = await pool.execute(`
+            SELECT 
+              pv.id AS variant_id,
+              pv.sku,
+              pv.price,
+              pv.stock,
+              av.value AS color
+            FROM product_variants pv
+            LEFT JOIN variant_attributes pva 
+              ON pva.variant_id = pv.id
+            LEFT JOIN attribute_values av 
+              ON av.id = pva.attribute_value_id
+            WHERE pv.product_id = ?
+          `, [product.id]);
+
+          // 🧠 LIMPIAR VARIANTES (una por variant_id)
+          const variantsMap = {};
+          variantsRaw.forEach(v => {
+            if (!variantsMap[v.variant_id]) {
+              variantsMap[v.variant_id] = {
+                variant_id: v.variant_id,
+                sku: v.sku,
+                price: v.price,
+                stock: v.stock,
+                color: v.color
+              };
+            }
+          });
+
+          const variants = Object.values(variantsMap);
+
+          // 🎯 COLORES ÚNICOS
+          const colors = [
+            ...new Set(
+              variants
+                .map(v => v.color)
+                .filter(Boolean)
+            )
+          ];
 
           return {
             ...product,
             images: images.map(img => img.img_url),
-            variants: variants
+            variants,
+            colors
           };
+
         } catch (err) {
-          console.error(`Error obteniendo detalles para producto ${product.id}:`, err);
+          console.error(`Error producto ${product.id}:`, err);
           return {
             ...product,
             images: [],
-            variants: []
+            variants: [],
+            colors: []
           };
         }
       })

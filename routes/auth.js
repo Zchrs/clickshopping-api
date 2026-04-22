@@ -15,7 +15,7 @@ const { createUser,
   getVerificationToken, 
   setGuestPassword, 
   createGuestPassword, 
-  getUsersGuest 
+  getUsersGuest
 } = require("../controllers/auth");
 const { validateJwt } = require("../middlewares/validate-jwt");
 
@@ -46,6 +46,7 @@ router.post("/login",
 );
 
 router.post('/account/verify/email/:token', verifyEmail);
+
 
 
 router.get('/account/email/verify-status/:token', async (req, res) => {

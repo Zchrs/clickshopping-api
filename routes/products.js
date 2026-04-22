@@ -253,12 +253,29 @@ router.post("/:id/sell-product", async (req, res) => {
 // ❌ ELIMINAR PRODUCTO
 router.delete("/delete/:id", async (req, res) => {
   try {
-    await deleteProduct(req, res);
-    await res.notifyProductsUpdate(); // 🔥 SSE
-    res.json({ ok: true });
+    await deleteProduct(req.params.id);
+
+    await res.notifyProductsUpdate(); // SSE
+
+    return res.status(200).json({
+      ok: true,
+      message: "Producto eliminado correctamente",
+    });
+
   } catch (err) {
     console.error("❌ deleteProduct:", err.message);
-    res.status(500).json({ error: "Error deleting product" });
+
+    if (err.message === "NOT_FOUND") {
+      return res.status(404).json({
+        ok: false,
+        error: "Producto no existe",
+      });
+    }
+
+    return res.status(500).json({
+      ok: false,
+      error: "Error deleting product",
+    });
   }
 });
 

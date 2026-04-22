@@ -488,33 +488,22 @@ const updateProduct = async (req, res) => {
 };
 
 
-const deleteProduct = async (req, res) => {
-  const { id } = req.params;
+const deleteProduct = async (id) => {
   const connection = await pool.getConnection();
   const isProduction = process.env.NODE_ENV === "production";
 
   try {
     await connection.beginTransaction();
 
-    /* ===============================
-       VALIDAR PRODUCTO
-    =============================== */
     const [product] = await connection.execute(
       "SELECT id FROM products WHERE id = ?",
       [id]
     );
 
     if (!product.length) {
-      await connection.rollback();
-      return res.status(404).json({
-        ok: false,
-        error: "Producto no existe",
-      });
+      throw new Error("NOT_FOUND");
     }
 
-    /* ===============================
-       IMÁGENES (CLOUDINARY)
-    =============================== */
     const [images] = await connection.execute(
       "SELECT file_id FROM products_img WHERE product_id = ?",
       [id]
@@ -530,9 +519,6 @@ const deleteProduct = async (req, res) => {
       }
     }
 
-    /* ===============================
-       VARIANTES
-    =============================== */
     const [variants] = await connection.execute(
       "SELECT id FROM product_variants WHERE product_id = ?",
       [id]
@@ -541,71 +527,45 @@ const deleteProduct = async (req, res) => {
     const variantIds = variants.map((v) => v.id);
 
     if (variantIds.length > 0) {
-      // eliminar relaciones de atributos
       await connection.query(
         `DELETE FROM variant_attributes WHERE variant_id IN (?)`,
         [variantIds]
       );
 
-      // eliminar variantes
       await connection.query(
         `DELETE FROM product_variants WHERE id IN (?)`,
         [variantIds]
       );
     }
 
-    /* ===============================
-       IMÁGENES DB
-    =============================== */
     await connection.execute(
       "DELETE FROM products_img WHERE product_id = ?",
       [id]
     );
 
-    /* ===============================
-       INVENTARIO
-    =============================== */
     await connection.execute(
       "DELETE FROM inventory WHERE product_id = ?",
       [id]
     );
 
-    /* ===============================
-       PRODUCTO
-    =============================== */
     await connection.execute(
       "DELETE FROM products WHERE id = ?",
       [id]
     );
 
-    /* ===============================
-       COMMIT
-    =============================== */
     await connection.commit();
 
-    return res.status(200).json({
-      ok: true,
-      message: "Producto eliminado correctamente",
-    });
+    return { ok: true };
 
   } catch (error) {
     await connection.rollback();
-
-    console.error("❌ deleteProduct:", error);
-
-    // 🔥 evita doble response
-    if (!res.headersSent) {
-      return res.status(500).json({
-        ok: false,
-        error: "Error al eliminar producto",
-        detail: error.message,
-      });
-    }
-
+    throw error;
   } finally {
     connection.release();
   }
 };
+
+
 
 module.exports = {
   createProduct,
